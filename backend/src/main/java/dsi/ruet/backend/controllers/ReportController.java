@@ -6,10 +6,13 @@ import dsi.ruet.backend.dto.manager.SalesSummaryResponse;
 import dsi.ruet.backend.dto.manager.WalletTopupReportResponse;
 import dsi.ruet.backend.services.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/reports")
@@ -28,7 +31,7 @@ public class ReportController {
     @PreAuthorize("hasRole('MEAL_MANAGER')")
     public ResponseEntity<ApiResponse<SalesReportResponse>> getSalesReport(
             Authentication authentication,
-            @RequestParam String date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         String email = authentication.getName();
         ApiResponse<SalesReportResponse> response = reportService.getSalesReport(email, date);
         return ResponseEntity.ok(response);
@@ -43,7 +46,7 @@ public class ReportController {
     @PreAuthorize("hasRole('MEAL_MANAGER')")
     public ResponseEntity<ApiResponse<WalletTopupReportResponse>> getWalletTopupReport(
             Authentication authentication,
-            @RequestParam String date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         String email = authentication.getName();
         ApiResponse<WalletTopupReportResponse> response = reportService.getWalletTopupReport(email, date);
         return ResponseEntity.ok(response);

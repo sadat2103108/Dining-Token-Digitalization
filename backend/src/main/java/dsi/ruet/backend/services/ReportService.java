@@ -42,10 +42,9 @@ public class ReportService {
     /**
      * GET /reports/sales?date=YYYY-MM-DD — Sales report for a given date
      */
-    public ApiResponse<SalesReportResponse> getSalesReport(String email, String dateStr) {
+    public ApiResponse<SalesReportResponse> getSalesReport(String email, LocalDate date) {
         User manager = getManager(email);
         Long hallId = manager.getHallId();
-        LocalDate date = LocalDate.parse(dateStr);
 
         List<Meal> meals = mealRepository.findByHallIdAndMealDate(hallId, date);
 
@@ -75,22 +74,21 @@ public class ReportService {
         }
 
         SalesReportResponse response = new SalesReportResponse();
-        response.setDate(dateStr);
+        response.setDate(date.toString());
         response.setHallId(hallId);
         response.setMeals(details);
         response.setTotalTokensSold(totalTokens);
         response.setTotalRevenue(totalRevenue);
 
-        return new ApiResponse<>("Sales report for " + dateStr, response);
+        return new ApiResponse<>("Sales report for " + date, response);
     }
 
     /**
      * GET /reports/wallet-topups?date=YYYY-MM-DD — Wallet top-up report for a given date
      */
-    public ApiResponse<WalletTopupReportResponse> getWalletTopupReport(String email, String dateStr) {
+    public ApiResponse<WalletTopupReportResponse> getWalletTopupReport(String email, LocalDate date) {
         User manager = getManager(email);
         Long hallId = manager.getHallId();
-        LocalDate date = LocalDate.parse(dateStr);
 
         // Get all users in this hall
         List<User> hallUsers = userRepository.findAll().stream()
@@ -136,13 +134,13 @@ public class ReportService {
         }
 
         WalletTopupReportResponse response = new WalletTopupReportResponse();
-        response.setDate(dateStr);
+        response.setDate(date.toString());
         response.setHallId(hallId);
         response.setTotalTopups(topupDetails.size());
         response.setTotalAmount(totalAmount);
         response.setTopups(topupDetails);
 
-        return new ApiResponse<>("Wallet top-up report for " + dateStr, response);
+        return new ApiResponse<>("Wallet top-up report for " + date, response);
     }
 
     /**
