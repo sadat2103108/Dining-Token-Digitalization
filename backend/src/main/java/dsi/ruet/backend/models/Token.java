@@ -41,7 +41,7 @@ public class Token {
     private LocalDateTime usedAt;
 
     /** Unique QR code string for this token (format: TOKEN:<id>:<uuid>) */
-    @Column(name = "qr_code", length = 100)
+    @Column(name = "qr_code", length = 100, unique = true)
     private String qrCode;
 
     @PrePersist
