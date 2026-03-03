@@ -104,10 +104,19 @@ class _LoginPageState extends State<LoginPage> {
 
   void _navigateByRole(String role) {
     final screen = _getScreenByRole(role);
+    if (screen == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unsupported role: $role'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
     Navigator.of(context).pushReplacementNamed(screen);
   }
 
-  String _getScreenByRole(String role) {
+  String? _getScreenByRole(String role) {
     switch (role.toUpperCase()) {
       case 'STUDENT':
         return '/student-home';
@@ -116,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
       case 'DINING_MANAGER':
         return '/dining-manager-home';
       default:
-        return '/home';
+        return null;
     }
   }
 
