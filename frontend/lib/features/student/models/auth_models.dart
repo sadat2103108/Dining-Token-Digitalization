@@ -55,6 +55,7 @@ class AuthResponse {
   final String name;
   final int userId;
   final int? hallId;
+  final String? hallName;
   // Student-only fields
   final String? roll;
   final String? phoneNo;
@@ -67,6 +68,7 @@ class AuthResponse {
     required this.name,
     required this.userId,
     this.hallId,
+    this.hallName,
     this.roll,
     this.phoneNo,
     this.roomNo,
@@ -79,6 +81,7 @@ class AuthResponse {
         name: json['name'] as String,
         userId: json['userId'] as int,
         hallId: json['hallId'] as int?,
+        hallName: json['hallName'] as String?,
         roll: json['roll'] as String?,
         phoneNo: json['phoneNo'] as String?,
         roomNo: json['roomNo'] as String?,
@@ -91,6 +94,7 @@ class AuthResponse {
         'name': name,
         'userId': userId,
         'hallId': hallId,
+        'hallName': hallName,
         'roll': roll,
         'phoneNo': phoneNo,
         'roomNo': roomNo,

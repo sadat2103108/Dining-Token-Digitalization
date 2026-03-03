@@ -70,14 +70,15 @@ class TokenModel {
   });
 
   factory TokenModel.fromJson(Map<String, dynamic> json) => TokenModel(
-        id: json['id'] as String,
-        tokenType: json['tokenType'] as String,
-        date: json['date'] as String,
-        hall: json['hall'] as String,
-        time: json['time'] as String,
-        status: json['status'] as String,
-        price: json['price'] as int,
-        isValid: json['status'] == 'valid_today' || json['status'] == 'Valid Today',
+        id: json['id'].toString(),
+        tokenType: json['mealType'] as String? ?? json['tokenType'] as String? ?? '',
+        date: json['mealDate']?.toString() ?? json['date'] as String? ?? '',
+        hall: json['hall'] as String? ?? '',
+        time: json['time'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        price: (json['price'] as num?)?.toInt() ?? 0,
+        isValid: (json['status'] as String?)?.toUpperCase() == 'AVAILABLE' ||
+            (json['status'] as String?)?.toUpperCase() == 'ACTIVE',
       );
 
   Map<String, dynamic> toJson() => {
@@ -315,17 +316,15 @@ class AvailableToken {
 
 /// Request to purchase a token.
 class PurchaseTokenRequest {
-  final String tokenType; // 'lunch' | 'dinner'
-  final String date;
+  final int mealId;
 
-  const PurchaseTokenRequest({required this.tokenType, required this.date});
+  const PurchaseTokenRequest({required this.mealId});
 
   Map<String, dynamic> toJson() => {
-        'tokenType': tokenType,
-        'date': date,
+        'mealId': mealId,
       };
 
   @override
   String toString() =>
-      'PurchaseTokenRequest(type: $tokenType, date: $date)';
+      'PurchaseTokenRequest(mealId: $mealId)';
 }

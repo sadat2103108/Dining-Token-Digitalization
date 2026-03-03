@@ -27,7 +27,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   // --- Filter state ---
   String? _selectedMealType;   // null = All
-  String? _selectedHallName;   // null = All
 
   // --- Data lists ---
   List<MarketplacePost> openPosts = [];
@@ -122,37 +121,25 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           postId: 'POST-001',
           sellerName: 'Rahim Uddin',
           mealType: 'Lunch',
-          hallName: 'Shahid Minar Hall',
-          mealTime: '12:30 PM',
+          mealDate: '2025-01-16',
           mealPrice: 55,
-          avatarColor: Colors.blue,
-          studentId: 'STU-101',
-          mobile: '01712345678',
-          roomNo: '305',
+          status: 'OPEN',
         ),
         MarketplacePost(
           postId: 'POST-002',
           sellerName: 'Karim Hasan',
           mealType: 'Dinner',
-          hallName: 'Bangabandhu Hall',
-          mealTime: '7:30 PM',
+          mealDate: '2025-01-16',
           mealPrice: 50,
-          avatarColor: Colors.green,
-          studentId: 'STU-102',
-          mobile: '01898765432',
-          roomNo: '210',
+          status: 'OPEN',
         ),
         MarketplacePost(
           postId: 'POST-003',
           sellerName: 'Nusrat Jahan',
           mealType: 'Lunch',
-          hallName: 'Rokeya Hall',
-          mealTime: '12:30 PM',
+          mealDate: '2025-01-16',
           mealPrice: 60,
-          avatarColor: Colors.purple,
-          studentId: 'STU-103',
-          mobile: '01556781234',
-          roomNo: '412',
+          status: 'OPEN',
         ),
       ];
       myTokens = const [
@@ -176,15 +163,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           listingId: 'LST-001',
           mealType: 'Dinner',
           buyerName: 'Fahim Ahmed',
-          price: 55,
+          mealPrice: 55,
           status: 'PENDING',
-          pendingSince: DateTime.now().subtract(const Duration(minutes: 5)),
+          buyerRequestedAt: DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String(),
         ),
         const MyListing(
           listingId: 'LST-002',
           mealType: 'Lunch',
-          buyerName: '',
-          price: 50,
+          mealPrice: 50,
           status: 'OPEN',
         ),
       ];
@@ -193,9 +179,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           purchaseId: 'PUR-001',
           sellerName: 'Rahim Uddin',
           mealType: 'Lunch',
-          price: 55,
+          mealPrice: 55,
           status: 'PENDING',
-          pendingSince: DateTime.now().subtract(const Duration(minutes: 3)),
+          buyerRequestedAt: DateTime.now().subtract(const Duration(minutes: 3)).toIso8601String(),
         ),
       ];
       _isLoading = false;
@@ -204,13 +190,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   // --- Action methods (real API calls) ---
 
-  Future<void> sendBuyRequest(String postId, {required String paymentMethod}) async {
+  Future<void> sendBuyRequest(String postId, {required String paymentType}) async {
     // TODO: Uncomment when backend is ready
     // try {
-    //   await widget.apiService.sendBuyRequest(postId, paymentMethod: paymentMethod);
+    //   await widget.apiService.sendBuyRequest(postId, paymentType: paymentType);
     //   if (!mounted) return;
     //   ScaffoldMessenger.of(context).showSnackBar(
-    //     SnackBar(content: Text('Buy request sent ($paymentMethod)')),
+    //     SnackBar(content: Text('Buy request sent ($paymentType)')),
     //   );
     // } catch (e) {
     //   if (!mounted) return;
@@ -226,7 +212,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Buy request sent via $paymentMethod (dummy)')),
+      SnackBar(content: Text('Buy request sent via $paymentType (dummy)')),
     );
     await _loadData();
   }
@@ -280,7 +266,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    sendBuyRequest(postId, paymentMethod: 'cash');
+                    sendBuyRequest(postId, paymentType: 'TRANSACTION');
                   },
                 ),
                 const SizedBox(height: 8),
@@ -302,7 +288,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    sendBuyRequest(postId, paymentMethod: 'credit');
+                    sendBuyRequest(postId, paymentType: 'TOPUP');
                   },
                 ),
                 const SizedBox(height: 8),
@@ -399,7 +385,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     // TODO: Uncomment when backend is ready
     // try {
     //   await widget.apiService.sellToken(
-    //     CreateSellRequest(tokenId: tokenId, price: 50),
+    //     CreateSellRequest(tokenId: int.parse(tokenId)),
     //   );
     //   if (!mounted) return;
     //   ScaffoldMessenger.of(context).showSnackBar(
@@ -490,13 +476,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   // TAB 1 — BROWSE  (existing UI preserved)
   // ───────────────────────────────────────────────────────────────────────────
 
-  /// Returns posts filtered by the current meal-type & hall-name selections.
+  /// Returns posts filtered by the current meal-type selection.
   List<MarketplacePost> get _filteredPosts {
     return openPosts.where((p) {
       if (_selectedMealType != null && p.mealType != _selectedMealType) {
-        return false;
-      }
-      if (_selectedHallName != null && p.hallName != _selectedHallName) {
         return false;
       }
       return true;
@@ -516,35 +499,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  Widget _profileRow(ThemeData theme, IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: theme.colorScheme.primary),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildBrowseTab(ThemeData theme) {
-    // Derive unique hall names from posts for the filter dropdown
-    final hallNames = openPosts.map((p) => p.hallName).toSet().toList()..sort();
+    // Derive unique meal types from posts for the filter dropdown
     final mealTypes = openPosts.map((p) => p.mealType).toSet().toList()..sort();
     final filtered = _filteredPosts;
 
@@ -591,39 +547,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Hall Name filter
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        value: _selectedHallName,
-                        isExpanded: true,
-                        hint: const Text('All Halls'),
-                        icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                        style: theme.textTheme.bodyMedium,
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('All Halls'),
-                          ),
-                          ...hallNames.map((hall) => DropdownMenuItem<String?>(
-                                value: hall,
-                                child: Text(hall),
-                              )),
-                        ],
-                        onChanged: (v) => setState(() => _selectedHallName = v),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -655,13 +578,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                 child: CircleAvatar(
                                   radius: 24,
                                   backgroundColor:
-                                      req.avatarColor.withOpacity(0.2),
+                                      Colors.blue.withOpacity(0.2),
                                   child: Text(
-                                    req.sellerName[0],
-                                    style: TextStyle(
+                                    req.sellerName.isNotEmpty ? req.sellerName[0] : '?',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
-                                      color: req.avatarColor,
+                                      color: Colors.blue,
                                     ),
                                   ),
                                 ),
@@ -729,7 +652,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${req.hallName}  •  ${req.mealTime}',
+                                      req.mealDate,
                                       style: theme.textTheme.bodySmall
                                           ?.copyWith(
                                         color: theme.colorScheme
@@ -1010,7 +933,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
     final Color mealColor =
         listing.mealType == 'Lunch' ? Colors.orange : Colors.deepPurple;
-    final remaining = _remainingTime(listing.pendingSince);
+    final remaining = _remainingTime(listing.buyerRequestedAt != null
+        ? DateTime.tryParse(listing.buyerRequestedAt!)
+        : null);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1082,10 +1007,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                           ),
                         ],
                       ),
-                      if (listing.buyerName.isNotEmpty) ...[
+                      if (listing.buyerName != null && listing.buyerName!.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Buyer: ${listing.buyerName}',
+                          'Buyer: ${listing.buyerName!}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -1212,7 +1137,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
     final Color mealColor =
         purchase.mealType == 'Lunch' ? Colors.orange : Colors.deepPurple;
-    final remaining = _remainingTime(purchase.pendingSince);
+    final remaining = _remainingTime(purchase.buyerRequestedAt != null
+        ? DateTime.tryParse(purchase.buyerRequestedAt!)
+        : null);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1448,10 +1375,10 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
 
     // Use API data if available, fallback to post data
     final name = _profile?.name ?? post.sellerName;
-    final studentId = _profile?.roll ?? post.studentId;
-    final mobile = _profile?.phoneNo ?? post.mobile;
-    final hallName = _profile?.hallName ?? post.hallName;
-    final roomNo = _profile?.roomNo ?? post.roomNo;
+    final studentId = _profile?.roll ?? '';
+    final mobile = _profile?.phoneNo ?? '';
+    final hallName = _profile?.hallName ?? '';
+    final roomNo = _profile?.roomNo ?? 'N/A';
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -1475,13 +1402,13 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: post.avatarColor.withOpacity(0.2),
+                    backgroundColor: Colors.blue.withOpacity(0.2),
                     child: Text(
                       name.isNotEmpty ? name[0] : '?',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 28,
-                        color: post.avatarColor,
+                        color: Colors.blue,
                       ),
                     ),
                   ),
@@ -1508,7 +1435,7 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
                   const SizedBox(height: 10),
                   _profileRow(theme, Icons.apartment_outlined, 'Hall Name', hallName),
                   const SizedBox(height: 10),
-                  _profileRow(theme, Icons.door_front_door_outlined, 'Room No', roomNo ?? 'N/A'),
+                  _profileRow(theme, Icons.door_front_door_outlined, 'Room No', roomNo),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,

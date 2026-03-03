@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // MARKETPLACE POST (Browse Tab)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -9,52 +7,64 @@ class MarketplacePost {
   final String postId;
   final String sellerName;
   final String mealType; // 'Lunch' | 'Dinner'
-  final String hallName;
-  final String mealTime;
+  final String mealDate;
+  final String? mealMenu;
   final int mealPrice;
-  final Color avatarColor;
-  // Seller profile details
-  final String studentId;
-  final String mobile;
-  final String roomNo;
+  final int? sellerId;
+  final int? buyerId;
+  final String? buyerName;
+  final String status;
+  final String? paymentType;
+  final String? createdAt;
+  final String? buyerRequestedAt;
 
   const MarketplacePost({
     required this.postId,
     required this.sellerName,
     required this.mealType,
-    required this.hallName,
-    required this.mealTime,
+    required this.mealDate,
+    this.mealMenu,
     required this.mealPrice,
-    required this.avatarColor,
-    required this.studentId,
-    required this.mobile,
-    required this.roomNo,
+    this.sellerId,
+    this.buyerId,
+    this.buyerName,
+    required this.status,
+    this.paymentType,
+    this.createdAt,
+    this.buyerRequestedAt,
   });
 
   factory MarketplacePost.fromJson(Map<String, dynamic> json) =>
       MarketplacePost(
-        postId: json['postId'] as String,
-        sellerName: json['sellerName'] as String,
-        mealType: json['mealType'] as String,
-        hallName: json['hallName'] as String,
-        mealTime: json['mealTime'] as String,
-        mealPrice: json['mealPrice'] as int,
-        avatarColor: _colorFromString(json['avatarColor'] as String?),
-        studentId: json['studentId'] as String,
-        mobile: json['mobile'] as String,
-        roomNo: json['roomNo'] as String,
+        postId: json['id'].toString(),
+        sellerName: json['sellerName'] as String? ?? '',
+        mealType: json['mealType'] as String? ?? '',
+        mealDate: json['mealDate'] as String? ?? '',
+        mealMenu: json['mealMenu'] as String?,
+        mealPrice: (json['mealPrice'] as num?)?.toInt() ?? 0,
+        sellerId: json['sellerId'] as int?,
+        buyerId: json['buyerId'] as int?,
+        buyerName: json['buyerName'] as String?,
+        status: json['status'] as String? ?? '',
+        paymentType: json['paymentType'] as String?,
+        createdAt: json['createdAt'] as String?,
+        buyerRequestedAt: json['buyerRequestedAt'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
-        'postId': postId,
+        'id': postId,
         'sellerName': sellerName,
         'mealType': mealType,
-        'hallName': hallName,
-        'mealTime': mealTime,
+        'mealDate': mealDate,
+        'mealMenu': mealMenu,
         'mealPrice': mealPrice,
-        'studentId': studentId,
-        'mobile': mobile,
-        'roomNo': roomNo,
+        'sellerId': sellerId,
+        'buyerId': buyerId,
+        'buyerName': buyerName,
+        'status': status,
+        'paymentType': paymentType,
+        'createdAt': createdAt,
+        'buyerRequestedAt': buyerRequestedAt,
       };
 
   /// Get seller initial for avatar.
@@ -62,31 +72,37 @@ class MarketplacePost {
       sellerName.isNotEmpty ? sellerName[0].toUpperCase() : '?';
 
   /// Whether this is a lunch post.
-  bool get isLunch => mealType == 'Lunch';
+  bool get isLunch => mealType.toUpperCase() == 'LUNCH';
 
   MarketplacePost copyWith({
     String? postId,
     String? sellerName,
     String? mealType,
-    String? hallName,
-    String? mealTime,
+    String? mealDate,
+    String? mealMenu,
     int? mealPrice,
-    Color? avatarColor,
-    String? studentId,
-    String? mobile,
-    String? roomNo,
+    int? sellerId,
+    int? buyerId,
+    String? buyerName,
+    String? status,
+    String? paymentType,
+    String? createdAt,
+    String? buyerRequestedAt,
   }) =>
       MarketplacePost(
         postId: postId ?? this.postId,
         sellerName: sellerName ?? this.sellerName,
         mealType: mealType ?? this.mealType,
-        hallName: hallName ?? this.hallName,
-        mealTime: mealTime ?? this.mealTime,
+        mealDate: mealDate ?? this.mealDate,
+        mealMenu: mealMenu ?? this.mealMenu,
         mealPrice: mealPrice ?? this.mealPrice,
-        avatarColor: avatarColor ?? this.avatarColor,
-        studentId: studentId ?? this.studentId,
-        mobile: mobile ?? this.mobile,
-        roomNo: roomNo ?? this.roomNo,
+        sellerId: sellerId ?? this.sellerId,
+        buyerId: buyerId ?? this.buyerId,
+        buyerName: buyerName ?? this.buyerName,
+        status: status ?? this.status,
+        paymentType: paymentType ?? this.paymentType,
+        createdAt: createdAt ?? this.createdAt,
+        buyerRequestedAt: buyerRequestedAt ?? this.buyerRequestedAt,
       );
 
   @override
@@ -162,46 +178,59 @@ enum PurchaseStatus {
 class MyListing {
   final String listingId;
   final String mealType; // 'Lunch' | 'Dinner'
-  final String buyerName;
-  final int price;
+  final String? mealDate;
+  final String? mealMenu;
+  final int mealPrice;
+  final String? buyerName;
   final String status; // 'OPEN' | 'PENDING' | 'COMPLETED'
-  final DateTime? pendingSince;
+  final String? paymentType;
+  final String? createdAt;
+  final String? buyerRequestedAt;
 
   const MyListing({
     required this.listingId,
     required this.mealType,
-    required this.buyerName,
-    required this.price,
+    this.mealDate,
+    this.mealMenu,
+    required this.mealPrice,
+    this.buyerName,
     required this.status,
-    this.pendingSince,
+    this.paymentType,
+    this.createdAt,
+    this.buyerRequestedAt,
   });
 
   factory MyListing.fromJson(Map<String, dynamic> json) => MyListing(
-        listingId: json['listingId'] as String,
-        mealType: json['mealType'] as String,
-        buyerName: json['buyerName'] as String? ?? '',
-        price: json['price'] as int,
-        status: json['status'] as String,
-        pendingSince: json['pendingSince'] != null
-            ? DateTime.parse(json['pendingSince'] as String)
-            : null,
+        listingId: json['id'].toString(),
+        mealType: json['mealType'] as String? ?? '',
+        mealDate: json['mealDate'] as String?,
+        mealMenu: json['mealMenu'] as String?,
+        mealPrice: (json['mealPrice'] as num?)?.toInt() ?? 0,
+        buyerName: json['buyerName'] as String?,
+        status: json['status'] as String? ?? '',
+        paymentType: json['paymentType'] as String?,
+        createdAt: json['createdAt'] as String?,
+        buyerRequestedAt: json['buyerRequestedAt'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
-        'listingId': listingId,
+        'id': listingId,
         'mealType': mealType,
+        'mealDate': mealDate,
+        'mealMenu': mealMenu,
+        'mealPrice': mealPrice,
         'buyerName': buyerName,
-        'price': price,
         'status': status,
-        if (pendingSince != null)
-          'pendingSince': pendingSince!.toIso8601String(),
+        'paymentType': paymentType,
+        'createdAt': createdAt,
+        'buyerRequestedAt': buyerRequestedAt,
       };
 
   /// Parsed status enum.
   ListingStatus get listingStatus => ListingStatus.fromString(status);
 
   /// Whether the listing has a buyer assigned.
-  bool get hasBuyer => buyerName.isNotEmpty;
+  bool get hasBuyer => buyerName != null && buyerName!.isNotEmpty;
 
   /// Whether this listing is awaiting seller confirmation.
   bool get isPending => status == 'PENDING';
@@ -212,21 +241,32 @@ class MyListing {
   /// Whether this listing has been completed.
   bool get isCompleted => status == 'COMPLETED';
 
+  /// Price getter for backward compat.
+  int get price => mealPrice;
+
   MyListing copyWith({
     String? listingId,
     String? mealType,
+    String? mealDate,
+    String? mealMenu,
+    int? mealPrice,
     String? buyerName,
-    int? price,
     String? status,
-    DateTime? pendingSince,
+    String? paymentType,
+    String? createdAt,
+    String? buyerRequestedAt,
   }) =>
       MyListing(
         listingId: listingId ?? this.listingId,
         mealType: mealType ?? this.mealType,
+        mealDate: mealDate ?? this.mealDate,
+        mealMenu: mealMenu ?? this.mealMenu,
+        mealPrice: mealPrice ?? this.mealPrice,
         buyerName: buyerName ?? this.buyerName,
-        price: price ?? this.price,
         status: status ?? this.status,
-        pendingSince: pendingSince ?? this.pendingSince,
+        paymentType: paymentType ?? this.paymentType,
+        createdAt: createdAt ?? this.createdAt,
+        buyerRequestedAt: buyerRequestedAt ?? this.buyerRequestedAt,
       );
 
   @override
@@ -253,38 +293,51 @@ class MyPurchase {
   final String purchaseId;
   final String sellerName;
   final String mealType; // 'Lunch' | 'Dinner'
-  final int price;
+  final String? mealDate;
+  final String? mealMenu;
+  final int mealPrice;
   final String status; // 'PENDING' | 'CONFIRMED' | 'CANCELLED'
-  final DateTime? pendingSince;
+  final String? paymentType;
+  final String? createdAt;
+  final String? buyerRequestedAt;
 
   const MyPurchase({
     required this.purchaseId,
     required this.sellerName,
     required this.mealType,
-    required this.price,
+    this.mealDate,
+    this.mealMenu,
+    required this.mealPrice,
     required this.status,
-    this.pendingSince,
+    this.paymentType,
+    this.createdAt,
+    this.buyerRequestedAt,
   });
 
   factory MyPurchase.fromJson(Map<String, dynamic> json) => MyPurchase(
-        purchaseId: json['purchaseId'] as String,
-        sellerName: json['sellerName'] as String,
-        mealType: json['mealType'] as String,
-        price: json['price'] as int,
-        status: json['status'] as String,
-        pendingSince: json['pendingSince'] != null
-            ? DateTime.parse(json['pendingSince'] as String)
-            : null,
+        purchaseId: json['id'].toString(),
+        sellerName: json['sellerName'] as String? ?? '',
+        mealType: json['mealType'] as String? ?? '',
+        mealDate: json['mealDate'] as String?,
+        mealMenu: json['mealMenu'] as String?,
+        mealPrice: (json['mealPrice'] as num?)?.toInt() ?? 0,
+        status: json['status'] as String? ?? '',
+        paymentType: json['paymentType'] as String?,
+        createdAt: json['createdAt'] as String?,
+        buyerRequestedAt: json['buyerRequestedAt'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
-        'purchaseId': purchaseId,
+        'id': purchaseId,
         'sellerName': sellerName,
         'mealType': mealType,
-        'price': price,
+        'mealDate': mealDate,
+        'mealMenu': mealMenu,
+        'mealPrice': mealPrice,
         'status': status,
-        if (pendingSince != null)
-          'pendingSince': pendingSince!.toIso8601String(),
+        'paymentType': paymentType,
+        'createdAt': createdAt,
+        'buyerRequestedAt': buyerRequestedAt,
       };
 
   /// Parsed status enum.
@@ -293,6 +346,9 @@ class MyPurchase {
   /// Seller initial for avatar display.
   String get sellerInitial =>
       sellerName.isNotEmpty ? sellerName[0].toUpperCase() : '?';
+
+  /// Price getter for backward compat.
+  int get price => mealPrice;
 
   /// Whether this purchase is awaiting confirmation.
   bool get isPending => status == 'PENDING';
@@ -307,17 +363,25 @@ class MyPurchase {
     String? purchaseId,
     String? sellerName,
     String? mealType,
-    int? price,
+    String? mealDate,
+    String? mealMenu,
+    int? mealPrice,
     String? status,
-    DateTime? pendingSince,
+    String? paymentType,
+    String? createdAt,
+    String? buyerRequestedAt,
   }) =>
       MyPurchase(
         purchaseId: purchaseId ?? this.purchaseId,
         sellerName: sellerName ?? this.sellerName,
         mealType: mealType ?? this.mealType,
-        price: price ?? this.price,
+        mealDate: mealDate ?? this.mealDate,
+        mealMenu: mealMenu ?? this.mealMenu,
+        mealPrice: mealPrice ?? this.mealPrice,
         status: status ?? this.status,
-        pendingSince: pendingSince ?? this.pendingSince,
+        paymentType: paymentType ?? this.paymentType,
+        createdAt: createdAt ?? this.createdAt,
+        buyerRequestedAt: buyerRequestedAt ?? this.buyerRequestedAt,
       );
 
   @override
@@ -341,69 +405,39 @@ class MyPurchase {
 
 /// Request to create a sell listing in the marketplace.
 class CreateSellRequest {
-  final String tokenId;
-  final int price;
+  final int tokenId;
 
-  const CreateSellRequest({required this.tokenId, required this.price});
+  const CreateSellRequest({required this.tokenId});
 
   Map<String, dynamic> toJson() => {
         'tokenId': tokenId,
-        'price': price,
       };
 
   @override
   String toString() =>
-      'CreateSellRequest(tokenId: $tokenId, price: $price)';
+      'CreateSellRequest(tokenId: $tokenId)';
 }
 
 /// Request to buy a token from the marketplace.
 class BuyFromMarketplaceRequest {
-  final String listingId;
-  final String paymentMethod; // 'cash' or 'credit'
+  final int postId;
+  final String paymentType; // 'TRANSACTION' or 'TOPUP'
 
   const BuyFromMarketplaceRequest({
-    required this.listingId,
-    required this.paymentMethod,
+    required this.postId,
+    required this.paymentType,
   });
 
   Map<String, dynamic> toJson() => {
-        'listingId': listingId,
-        'paymentMethod': paymentMethod,
+        'postId': postId,
+        'paymentType': paymentType,
       };
 
   @override
   String toString() =>
-      'BuyFromMarketplaceRequest(listingId: $listingId, paymentMethod: $paymentMethod)';
+      'BuyFromMarketplaceRequest(postId: $postId, paymentType: $paymentType)';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 
-/// Convert a color string to a Color (fallback to blue).
-Color _colorFromString(String? colorName) {
-  switch (colorName?.toLowerCase()) {
-    case 'blue':
-      return Colors.blue;
-    case 'purple':
-      return Colors.purple;
-    case 'teal':
-      return Colors.teal;
-    case 'orange':
-      return Colors.orange;
-    case 'indigo':
-      return Colors.indigo;
-    case 'red':
-      return Colors.red;
-    case 'green':
-      return Colors.green;
-    case 'pink':
-      return Colors.pink;
-    case 'cyan':
-      return Colors.cyan;
-    case 'amber':
-      return Colors.amber;
-    default:
-      return Colors.blue;
-  }
-}

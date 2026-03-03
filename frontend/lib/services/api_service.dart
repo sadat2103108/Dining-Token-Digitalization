@@ -40,7 +40,7 @@ class ApiService {
 
   static Future<List<MarketplacePostModel>> getOpenPosts(int userId) async {
     final res = await http.get(
-      Uri.parse('$baseUrl/marketplace'),
+      Uri.parse('$baseUrl/marketplace/posts'),
       headers: _headers(userId),
     );
     final body = jsonDecode(res.body);
@@ -62,10 +62,11 @@ class ApiService {
   }
 
   static Future<MarketplacePostModel> sendBuyRequest(
-      int userId, int postId) async {
+      int userId, int postId, {String paymentType = 'TRANSACTION'}) async {
     final res = await http.post(
-      Uri.parse('$baseUrl/marketplace/$postId/buy-request'),
+      Uri.parse('$baseUrl/marketplace/buy'),
       headers: _headers(userId),
+      body: jsonEncode({'postId': postId, 'paymentType': paymentType}),
     );
     final body = jsonDecode(res.body);
     if (body['success'] != true) throw Exception(body['message']);
@@ -75,7 +76,7 @@ class ApiService {
   static Future<MarketplacePostModel> confirmTransfer(
       int userId, int postId) async {
     final res = await http.post(
-      Uri.parse('$baseUrl/marketplace/$postId/confirm-transfer'),
+      Uri.parse('$baseUrl/marketplace/listings/$postId/confirm'),
       headers: _headers(userId),
     );
     final body = jsonDecode(res.body);
@@ -86,7 +87,7 @@ class ApiService {
   static Future<MarketplacePostModel> cancelBuyRequest(
       int userId, int postId) async {
     final res = await http.post(
-      Uri.parse('$baseUrl/marketplace/$postId/cancel-request'),
+      Uri.parse('$baseUrl/marketplace/purchases/$postId/cancel'),
       headers: _headers(userId),
     );
     final body = jsonDecode(res.body);
@@ -97,7 +98,7 @@ class ApiService {
   static Future<MarketplacePostModel> rejectBuyRequest(
       int userId, int postId) async {
     final res = await http.post(
-      Uri.parse('$baseUrl/marketplace/$postId/reject-request'),
+      Uri.parse('$baseUrl/marketplace/listings/$postId/reject'),
       headers: _headers(userId),
     );
     final body = jsonDecode(res.body);
@@ -106,8 +107,8 @@ class ApiService {
   }
 
   static Future<void> cancelListing(int userId, int postId) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/marketplace/$postId/cancel-listing'),
+    final res = await http.delete(
+      Uri.parse('$baseUrl/marketplace/$postId'),
       headers: _headers(userId),
     );
     final body = jsonDecode(res.body);

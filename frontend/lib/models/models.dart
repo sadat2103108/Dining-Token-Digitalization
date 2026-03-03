@@ -72,6 +72,7 @@ class MarketplacePostModel {
   final int? buyerId;
   final String? buyerName;
   final String status;
+  final String? paymentType;
   final String? createdAt;
   final String? buyerRequestedAt;
 
@@ -87,6 +88,7 @@ class MarketplacePostModel {
     this.buyerId,
     this.buyerName,
     required this.status,
+    this.paymentType,
     this.createdAt,
     this.buyerRequestedAt,
   });
@@ -104,6 +106,7 @@ class MarketplacePostModel {
         buyerId: json['buyerId'],
         buyerName: json['buyerName'],
         status: json['status'],
+        paymentType: json['paymentType'],
         createdAt: json['createdAt'],
         buyerRequestedAt: json['buyerRequestedAt'],
       );

@@ -79,11 +79,12 @@ class StudentApiService {
 
   Future<List<TokenModel>> getMyTokens() async {
     final res = await http.get(
-      Uri.parse('$_baseUrl/students/me/tokens'),
+      Uri.parse('$_baseUrl/tokens/me'),
       headers: _headers,
     );
     if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
+      final body = jsonDecode(res.body);
+      final List data = body['data'];
       return data.map((e) => TokenModel.fromJson(e)).toList();
     }
     throw Exception('Failed to fetch tokens');
@@ -189,13 +190,13 @@ class StudentApiService {
     throw Exception('Failed to fetch my purchases');
   }
 
-  Future<void> sendBuyRequest(String postId, {required String paymentMethod}) async {
+  Future<void> sendBuyRequest(String postId, {required String paymentType}) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/marketplace/buy'),
       headers: _headers,
       body: jsonEncode({
-        'postId': postId,
-        'paymentMethod': paymentMethod,
+        'postId': int.tryParse(postId) ?? postId,
+        'paymentType': paymentType,
       }),
     );
     if (res.statusCode != 200 && res.statusCode != 201) {
@@ -216,7 +217,7 @@ class StudentApiService {
 
   Future<void> confirmListing(String listingId) async {
     final res = await http.post(
-      Uri.parse('$_baseUrl/marketplace/listings/$listingId/confirm'),
+      Uri.parse('$_baseUrl/marketplace/$listingId/confirm'),
       headers: _headers,
     );
     if (res.statusCode != 200) {
@@ -226,7 +227,7 @@ class StudentApiService {
 
   Future<void> rejectListing(String listingId) async {
     final res = await http.post(
-      Uri.parse('$_baseUrl/marketplace/listings/$listingId/reject'),
+      Uri.parse('$_baseUrl/marketplace/$listingId/reject'),
       headers: _headers,
     );
     if (res.statusCode != 200) {
