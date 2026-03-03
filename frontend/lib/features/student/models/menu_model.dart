@@ -48,6 +48,7 @@ class MenuModel {
 
 /// A meal option displayed on the Purchase screen with UI-specific fields.
 class MealOption {
+  final int mealId;
   final String mealType; // 'Lunch' | 'Dinner'
   final int price;
   final String time;
@@ -56,6 +57,7 @@ class MealOption {
   final Color accentColor;
 
   const MealOption({
+    required this.mealId,
     required this.mealType,
     required this.price,
     required this.time,
@@ -65,6 +67,7 @@ class MealOption {
   });
 
   factory MealOption.fromJson(Map<String, dynamic> json) => MealOption(
+        mealId: json['mealId'] as int,
         mealType: json['mealType'] as String,
         price: json['price'] as int,
         time: json['time'] as String,
@@ -77,8 +80,9 @@ class MealOption {
       );
 
   /// Create from a [MenuModel] with a price.
-  factory MealOption.fromMenuModel(MenuModel menu, {required int price}) =>
+  factory MealOption.fromMenuModel(MenuModel menu, {required int mealId, required int price}) =>
       MealOption(
+        mealId: mealId,
         mealType: menu.mealType,
         price: price,
         time: menu.time,
@@ -92,5 +96,5 @@ class MealOption {
 
   @override
   String toString() =>
-      'MealOption(mealType: $mealType, price: $price, items: ${menu.length})';
+      'MealOption(mealId: $mealId, mealType: $mealType, price: $price, items: ${menu.length})';
 }

@@ -283,12 +283,14 @@ class MyToken {
 
 /// Represents an available token for purchase (Purchase screen).
 class AvailableToken {
+  final int mealId;
   final String tokenType; // 'Lunch' | 'Dinner'
   final int price;
   final String time;
   final List<String> menu;
 
   const AvailableToken({
+    required this.mealId,
     required this.tokenType,
     required this.price,
     required this.time,
@@ -296,6 +298,7 @@ class AvailableToken {
   });
 
   factory AvailableToken.fromJson(Map<String, dynamic> json) => AvailableToken(
+        mealId: json['mealId'] as int,
         tokenType: json['tokenType'] as String,
         price: json['price'] as int,
         time: json['time'] as String,
@@ -303,6 +306,7 @@ class AvailableToken {
       );
 
   Map<String, dynamic> toJson() => {
+        'mealId': mealId,
         'tokenType': tokenType,
         'price': price,
         'time': time,
@@ -311,7 +315,7 @@ class AvailableToken {
 
   @override
   String toString() =>
-      'AvailableToken(type: $tokenType, price: $price)';
+      'AvailableToken(mealId: $mealId, type: $tokenType, price: $price)';
 }
 
 /// Request to purchase a token.
