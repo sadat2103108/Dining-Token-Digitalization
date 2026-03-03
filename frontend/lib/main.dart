@@ -67,9 +67,10 @@ class _DiningAppState extends State<DiningApp> {
     Widget homeScreen;
     if (!_isLoggedIn) {
       homeScreen = const LoginPage();
-    } else if (_userRole.toUpperCase() == 'MEAL_MANAGER' ||
-        _userRole.toUpperCase() == 'MANAGER') {
+    } else if (_userRole.toUpperCase() == 'MEAL_MANAGER') {
       homeScreen = const ManagerDashboard();
+    } else if (_userRole.toUpperCase() == 'DINING_MANAGER') {
+      homeScreen = const _PlaceholderPage(title: 'Dining Manager');
     } else {
       // Default to student home for 'STUDENT' or other roles
       homeScreen = StudentHome(token: _token);
