@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/features/meal_manager/screens/manager_dashboard.dart';
+import 'package:frontend/features/student/screens/student_home.dart';
 import 'package:frontend/core/services/service_locator.dart';
 import 'package:frontend/core/widgets/app_primary_button.dart';
 import 'package:frontend/core/widgets/app_text_field.dart';
+import 'package:frontend/core/widgets/app_bar.dart';
 import 'package:frontend/core/widgets/loading_overlay.dart';
 import 'package:frontend/features/auth/screens/forgot_password_page.dart';
 import 'package:frontend/features/auth/screens/signup_page.dart';
@@ -85,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       // Navigate based on role
-      _navigateByRole(response.role);
+      await _navigateByRole(response.role);
     } catch (e) {
       if (!mounted) return;
 
@@ -102,21 +105,36 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _navigateByRole(String role) {
-    final screen = _getScreenByRole(role);
-    Navigator.of(context).pushReplacementNamed(screen);
-  }
+  Future<void> _navigateByRole(String role) async {
+    // Navigate to the appropriate home screen based on role
+    // Token is already saved to storage by the auth service
+    final token = await ServiceLocator.tokenStorage.getToken() ?? '';
 
-  String _getScreenByRole(String role) {
+    Widget screen;
+
     switch (role.toUpperCase()) {
       case 'STUDENT':
-        return '/student-home';
+        screen = StudentHome(token: token);
+        break;
       case 'MEAL_MANAGER':
-        return '/meal-manager-home';
+        screen = const ManagerDashboard();
+        break;
       case 'DINING_MANAGER':
-        return '/dining-manager-home';
+        screen = Scaffold(
+          appBar: const GlobalAppBar(title: 'Dining Manager'),
+          body: const Center(child: Text('Dining Manager - Coming Soon')),
+        );
+        break;
       default:
-        return '/home';
+        screen = StudentHome(token: token);
+    }
+
+    // Push the screen and remove all previous routes (so user can't go back)
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => screen),
+        (Route<dynamic> route) => false,
+      );
     }
   }
 

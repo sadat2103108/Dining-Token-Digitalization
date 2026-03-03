@@ -4,6 +4,7 @@ import 'package:frontend/core/widgets/app_primary_button.dart';
 import 'package:frontend/core/widgets/app_text_field.dart';
 import 'package:frontend/core/widgets/loading_overlay.dart';
 import 'package:frontend/features/auth/screens/otp_page.dart';
+import 'package:frontend/features/auth/screens/login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -298,7 +299,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       );
 
       // Navigate back to login
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (_) => false,
+      );
     } catch (e) {
       if (!mounted) return;
 
