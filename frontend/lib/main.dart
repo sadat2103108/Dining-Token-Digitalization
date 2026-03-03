@@ -65,15 +65,15 @@ class _DiningAppState extends State<DiningApp> {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      home: _isLoggedIn ? StudentHome(token: _token) : const LoginPage(),
+      home: StudentHome(token: _token),
       routes: {
         '/login': (_) => const LoginPage(),
         '/student-home': (_) => StudentHome(token: _token),
-        '/meal-manager-home': (_) =>
-            const _PlaceholderPage(title: 'Meal Manager'),
-        '/dining-manager-home': (_) =>
-            const _PlaceholderPage(title: 'Dining Manager'),
-        '/home': (_) => const LoginPage(),
+        // '/meal-manager-home': (_) =>
+        //     const _PlaceholderPage(title: 'Meal Manager'),
+        // '/dining-manager-home': (_) =>
+        //     const _PlaceholderPage(title: 'Dining Manager'),
+        // '/home': (_) => const LoginPage(),
       },
     );
   }

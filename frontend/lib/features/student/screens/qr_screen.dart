@@ -30,22 +30,59 @@ class _QrScreenState extends State<QrScreen> {
       _errorMessage = null;
     });
 
-    try {
-      final tokenModels = await widget.apiService.getMyTokens();
-      if (!mounted) return;
-      setState(() {
-        _tokens = tokenModels
-            .map((t) => TokenInfo.fromTokenModel(t))
-            .toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Failed to load tokens. Pull to retry.';
-        _isLoading = false;
-      });
-    }
+    // TODO: Uncomment when backend is ready
+    // try {
+    //   final tokenModels = await widget.apiService.getMyTokens();
+    //   if (!mounted) return;
+    //   setState(() {
+    //     _tokens = tokenModels
+    //         .map((t) => TokenInfo.fromTokenModel(t))
+    //         .toList();
+    //     _isLoading = false;
+    //   });
+    // } catch (e) {
+    //   if (!mounted) return;
+    //   setState(() {
+    //     _errorMessage = 'Failed to load tokens. Pull to retry.';
+    //     _isLoading = false;
+    //   });
+    // }
+
+    // --- Dummy data (remove when backend is ready) ---
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    setState(() {
+      _tokens = const [
+        TokenInfo(
+          tokenId: 'TKN-001',
+          tokenType: 'Lunch',
+          date: '2025-01-15',
+          hall: 'Shahid Minar Hall',
+          time: '12:30 PM - 2:00 PM',
+          status: 'Valid',
+          isValid: true,
+        ),
+        TokenInfo(
+          tokenId: 'TKN-002',
+          tokenType: 'Dinner',
+          date: '2025-01-15',
+          hall: 'Bangabandhu Hall',
+          time: '7:30 PM - 9:00 PM',
+          status: 'Used',
+          isValid: false,
+        ),
+        TokenInfo(
+          tokenId: 'TKN-003',
+          tokenType: 'Lunch',
+          date: '2025-01-16',
+          hall: 'Rokeya Hall',
+          time: '12:30 PM - 2:00 PM',
+          status: 'Valid',
+          isValid: true,
+        ),
+      ];
+      _isLoading = false;
+    });
   }
 
   void _onUseNow(TokenInfo token) {
