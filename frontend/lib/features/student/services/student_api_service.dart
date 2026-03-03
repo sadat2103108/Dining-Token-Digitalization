@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:frontend/core/constants/api_constants.dart';
 import '../models/models.dart';
 
 class StudentApiService {
-  static const String _baseUrl = 'http://10.0.2.2:8080/api'; // Android emulator → localhost
+  static const String _baseUrl = ApiConstants.baseUrl;
   final String _token;
 
   StudentApiService({required String token}) : _token = token;
@@ -79,11 +80,12 @@ class StudentApiService {
 
   Future<List<TokenModel>> getMyTokens() async {
     final res = await http.get(
-      Uri.parse('$_baseUrl/students/me/tokens'),
+      Uri.parse('$_baseUrl/tokens/me'),
       headers: _headers,
     );
     if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
+      final body = jsonDecode(res.body);
+      final List data = body['data'];
       return data.map((e) => TokenModel.fromJson(e)).toList();
     }
     throw Exception('Failed to fetch tokens');
