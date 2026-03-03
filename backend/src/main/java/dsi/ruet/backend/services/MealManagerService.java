@@ -52,9 +52,6 @@ public class MealManagerService {
     @Autowired
     private HallRepository hallRepository;
 
-    @Autowired
-    private StudentInfoRepository studentInfoRepository;
-
     // Date formatters
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DISPLAY_DATE_FMT = DateTimeFormatter.ofPattern("MMMM d, yyyy");
@@ -78,10 +75,9 @@ public class MealManagerService {
         User manager = findUserById(managerId);
 
         // Look up student by roll number
-        StudentInfo studentInfo = studentInfoRepository.findByRoll(request.getStudentId())
+        User student = userRepository.findByRoll(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Student not found with roll: " + request.getStudentId()));
-        User student = studentInfo.getUser();
 
         // Ensure manager and student belong to the same hall
         verifySameHall(manager, student);
@@ -108,10 +104,9 @@ public class MealManagerService {
         User manager = findUserById(managerId);
 
         // Look up student by roll
-        StudentInfo studentInfo = studentInfoRepository.findByRoll(rollNumber)
+        User student = userRepository.findByRoll(rollNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Student not found with roll: " + rollNumber));
-        User student = studentInfo.getUser();
         verifySameHall(manager, student);
 
         // Fetch or default wallet balance
@@ -134,10 +129,10 @@ public class MealManagerService {
                 .findTopUpsBySenderAndDateRange(managerId, dayStart, dayEnd);
 
         List<CreditTransactionResponse> result = transactions.stream().map(tx -> {
-            // Get student roll from StudentInfo (if available)
+            // Get student roll from User entity (if available)
             Long receiverId = tx.getReceiver().getId();
-            String roll = studentInfoRepository.findById(receiverId)
-                    .map(StudentInfo::getRoll).orElse(receiverId.toString());
+            String roll = userRepository.findById(receiverId)
+                    .map(User::getRoll).orElse(receiverId.toString());
             String receiverName = userRepository.findById(receiverId)
                     .map(User::getName).orElse(receiverId.toString());
 
@@ -526,8 +521,8 @@ public class MealManagerService {
             List<DailyCreditHistoryResponse.CreditTransactionItem> items = dayTx.stream().map(tx -> {
                 // Resolve student roll number
                 Long receiverId = tx.getReceiver().getId();
-                String roll = studentInfoRepository.findById(receiverId)
-                        .map(StudentInfo::getRoll).orElse(receiverId.toString());
+                String roll = userRepository.findById(receiverId)
+                        .map(User::getRoll).orElse(receiverId.toString());
                 String receiverName = userRepository.findById(receiverId)
                         .map(User::getName).orElse(receiverId.toString());
 
@@ -758,8 +753,8 @@ public class MealManagerService {
                 .filter(t -> t.getStatus() != TokenStatus.USED)
                 .map(token -> {
                     User owner = token.getOwner();
-                    String roll = studentInfoRepository.findById(owner.getId())
-                            .map(StudentInfo::getRoll).orElse(owner.getId().toString());
+                    String roll = userRepository.findById(owner.getId())
+                            .map(User::getRoll).orElse(owner.getId().toString());
 
                     return new StudentTokenResponse(
                             owner.getId().toString(),

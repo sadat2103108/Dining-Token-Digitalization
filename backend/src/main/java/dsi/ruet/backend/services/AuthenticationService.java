@@ -9,11 +9,9 @@ import dsi.ruet.backend.dto.auth.OtpVerificationResponse;
 import dsi.ruet.backend.exception.AuthenticationException;
 import dsi.ruet.backend.exception.ResourceNotFoundException;
 import dsi.ruet.backend.models.User;
-import dsi.ruet.backend.models.StudentInfo;
 import dsi.ruet.backend.models.Hall;
 import dsi.ruet.backend.models.enums.Role;
 import dsi.ruet.backend.repositories.UserRepository;
-import dsi.ruet.backend.repositories.StudentInfoRepository;
 import dsi.ruet.backend.repositories.HallRepository;
 import dsi.ruet.backend.repositories.WalletRepository;
 import dsi.ruet.backend.models.Wallet;
@@ -38,9 +36,6 @@ public class AuthenticationService {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private StudentInfoRepository studentInfoRepository;
 
     @Autowired
     private HallRepository hallRepository;
@@ -110,29 +105,21 @@ public class AuthenticationService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setName(request.getName());
 
-        // Create student info for all roles except DINING_MANAGER
-        StudentInfo studentInfo = null;
-        if (user.getRole() != Role.DINING_MANAGER) {
+        // Set student info fields for all roles except DINING_MANAGER and ADMIN
+        if (user.getRole() == Role.STUDENT || user.getRole() == Role.MEAL_MANAGER) {
             // Validate required student info fields
-            if (request.getRoll() == null || request.getPhoneNo() == null || request.getRoomNo()==null) {
+            if (request.getRoll() == null || request.getPhoneNo() == null || request.getRoomNo() == null) {
                 throw new IllegalArgumentException(
                     "For " + user.getRole().name() + " role, roll, roomNo and phoneNo are required");
             }
 
-            studentInfo = new StudentInfo();
-            studentInfo.setUser(user);
-            studentInfo.setRoll(request.getRoll());
-            studentInfo.setRoomNo(request.getRoomNo());
-            studentInfo.setPhoneNo(request.getPhoneNo());
+            user.setRoll(request.getRoll());
+            user.setRoomNo(request.getRoomNo());
+            user.setPhoneNo(request.getPhoneNo());
         }
 
         // User is already verified via OTP in previous step, just save with password
         user = userRepository.save(user);
-
-        // Save StudentInfo
-        if (studentInfo != null) {
-            studentInfoRepository.save(studentInfo);
-        }
         
         // Create a wallet for this user with 0 balance
         Wallet wallet = new Wallet();
@@ -189,15 +176,11 @@ public class AuthenticationService {
             response.setHallName(user.getHall().getName());
         }
 
-        // Include StudentInfo for all roles except DINING_MANAGER
-        if (user.getRole() != Role.DINING_MANAGER) {
-            StudentInfo studentInfo = studentInfoRepository.findById(user.getId())
-                    .orElse(null);
-            if (studentInfo != null) {
-                response.setRoll(studentInfo.getRoll());
-                response.setPhoneNo(studentInfo.getPhoneNo());
-                response.setRoomNo(studentInfo.getRoomNo());
-            }
+        // Include student info for all roles except DINING_MANAGER and ADMIN
+        if (user.getRole() == Role.STUDENT || user.getRole() == Role.MEAL_MANAGER) {
+            response.setRoll(user.getRoll());
+            response.setPhoneNo(user.getPhoneNo());
+            response.setRoomNo(user.getRoomNo());
         }
 
         return response;
@@ -205,7 +188,7 @@ public class AuthenticationService {
 
     /**
      * Get current logged in user info based on email from JWT token
-     * Returns user info with StudentInfo for non-DINING_MANAGER roles
+     * Returns user info with student fields for STUDENT and MEAL_MANAGER roles
      */
     public AuthResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
@@ -225,15 +208,11 @@ public class AuthenticationService {
             response.setHallName(user.getHall().getName());
         }
 
-        // Include StudentInfo for all roles except DINING_MANAGER
-        if (user.getRole() != Role.DINING_MANAGER) {
-            StudentInfo studentInfo = studentInfoRepository.findById(user.getId())
-                    .orElse(null);
-            if (studentInfo != null) {
-                response.setRoll(studentInfo.getRoll());
-                response.setPhoneNo(studentInfo.getPhoneNo());
-                response.setRoomNo(studentInfo.getRoomNo());
-            }
+        // Include student info for all roles except DINING_MANAGER and ADMIN
+        if (user.getRole() == Role.STUDENT || user.getRole() == Role.MEAL_MANAGER) {
+            response.setRoll(user.getRoll());
+            response.setPhoneNo(user.getPhoneNo());
+            response.setRoomNo(user.getRoomNo());
         }
 
         return response;

@@ -8,10 +8,8 @@ import dsi.ruet.backend.exception.DuplicateEmailException;
 import dsi.ruet.backend.exception.ResourceNotFoundException;
 import dsi.ruet.backend.models.Hall;
 import dsi.ruet.backend.models.User;
-import dsi.ruet.backend.models.StudentInfo;
 import dsi.ruet.backend.models.enums.Role;
 import dsi.ruet.backend.repositories.UserRepository;
-import dsi.ruet.backend.repositories.StudentInfoRepository;
 import dsi.ruet.backend.repositories.HallRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,9 +22,6 @@ public class AdminService {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private StudentInfoRepository studentInfoRepository;
 
     @Autowired
     private HallRepository hallRepository;
@@ -57,29 +52,22 @@ public class AdminService {
 
     public ApiResponse<List<UserResponse>> getAllUsers() {
         List<User> users = userRepository.findAll();
-        List<UserResponse> result = users.stream().map(user -> {
-            StudentInfo info = studentInfoRepository.findById(user.getId()).orElse(null);
-            return UserResponse.from(user, info);
-        }).toList();
+        List<UserResponse> result = users.stream()
+                .map(UserResponse::from)
+                .toList();
         return new ApiResponse<>("All users retrieved successfully", result);
     }
     
     public ApiResponse<UserResponse> getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-        StudentInfo info = studentInfoRepository.findById(user.getId()).orElse(null);
-        return new ApiResponse<>("User retrieved successfully", UserResponse.from(user, info));
+        return new ApiResponse<>("User retrieved successfully", UserResponse.from(user));
     }
 
     @Transactional
     public ApiResponse<Void> deleteUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-
-        StudentInfo studentInfo = studentInfoRepository.findById(user.getId()).orElse(null);
-        if (studentInfo != null) {
-            studentInfoRepository.delete(studentInfo);
-        }
 
         userRepository.delete(user);
         return new ApiResponse<>("User deleted successfully", null);

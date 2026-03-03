@@ -1,6 +1,5 @@
 package dsi.ruet.backend.dto.admin;
 
-import dsi.ruet.backend.models.StudentInfo;
 import dsi.ruet.backend.models.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,13 +18,13 @@ public class UserResponse {
     private Boolean isVerified;
     private String role;
 
-    // ---- StudentInfo fields (null for DINING_MANAGER) ----
+    // ---- Student-specific fields (null for DINING_MANAGER, ADMIN) ----
     private String roll;
     private String phoneNo;
     private String roomNo;
 
-    /** Build from a User entity + optional StudentInfo */
-    public static UserResponse from(User user, StudentInfo info) {
+    /** Build from a User entity */
+    public static UserResponse from(User user) {
         UserResponse r = new UserResponse();
         r.setId(user.getId());
         r.setEmail(user.getEmail());
@@ -33,12 +32,9 @@ public class UserResponse {
         r.setHallId(user.getHall() != null ? user.getHall().getId() : null);
         r.setIsVerified(user.getIsVerified());
         r.setRole(user.getRole() != null ? user.getRole().name() : null);
-
-        if (info != null) {
-            r.setRoll(info.getRoll());
-            r.setPhoneNo(info.getPhoneNo());
-            r.setRoomNo(info.getRoomNo());
-        }
+        r.setRoll(user.getRoll());
+        r.setPhoneNo(user.getPhoneNo());
+        r.setRoomNo(user.getRoomNo());
         return r;
     }
 }

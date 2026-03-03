@@ -28,7 +28,7 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false, length = 120)
     private String email;
 
-    @Column(name = "pass", length = 255)
+    @Column(nullable = false, length = 255)
     private String password;
 
     @Column(nullable = false, length = 120)
@@ -39,11 +39,22 @@ public class User implements UserDetails {
     private Hall hall;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean isVerified = false;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
+
+    // ---- Student-specific fields (nullable for DINING_MANAGER, ADMIN) ----
+    @Column(unique = true, length = 50)
+    private String roll;
+
+    @Column(name = "phone_no", length = 20)
+    private String phoneNo;
+
+    @Column(name = "room_no", length = 20)
+    private String roomNo;
 
     /* ---------------- Spring Security ---------------- */
 
