@@ -14,7 +14,9 @@ class QrScreen extends StatefulWidget {
 
 class _QrScreenState extends State<QrScreen> {
   String? _activeTokenId;
+  String? _qrData; // QR code string from backend
   bool _isLoading = true;
+  bool _isGeneratingQr = false;
   String? _errorMessage;
   List<TokenInfo> _tokens = [];
 
@@ -48,15 +50,38 @@ class _QrScreenState extends State<QrScreen> {
     }
   }
 
-  void _onUseNow(TokenInfo token) {
+  Future<void> _onUseNow(TokenInfo token) async {
     setState(() {
       _activeTokenId = token.tokenId;
+      _qrData = null;
+      _isGeneratingQr = true;
     });
+
+    try {
+      final qrResponse = await widget.apiService.generateQr(token.tokenId);
+      if (!mounted) return;
+      setState(() {
+        _qrData = qrResponse.qrCode;
+        _isGeneratingQr = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isGeneratingQr = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate QR: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _onCloseQr() {
     setState(() {
       _activeTokenId = null;
+      _qrData = null;
     });
   }
 
@@ -210,17 +235,29 @@ class _QrScreenState extends State<QrScreen> {
                   width: 2,
                 ),
               ),
-              child: QrImageView(
-                data: token.tokenId,
-                version: QrVersions.auto,
-                size: 200,
-                gapless: true,
-                errorStateBuilder: (ctx, err) {
-                  return const Center(
-                    child: Text('Error generating QR'),
-                  );
-                },
-              ),
+              child: _isGeneratingQr
+                  ? const SizedBox(
+                      height: 200,
+                      width: 200,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _qrData != null
+                      ? QrImageView(
+                          data: _qrData!,
+                          version: QrVersions.auto,
+                          size: 200,
+                          gapless: true,
+                          errorStateBuilder: (ctx, err) {
+                            return const Center(
+                              child: Text('Error generating QR'),
+                            );
+                          },
+                        )
+                      : const SizedBox(
+                          height: 200,
+                          width: 200,
+                          child: Center(child: Text('QR not available')),
+                        ),
             ),
 
             const SizedBox(height: 16),

@@ -114,6 +114,18 @@ class StudentApiService {
     throw Exception('Purchase failed: ${res.body}');
   }
 
+  Future<QrSessionModel> generateQr(String tokenId) async {
+    final res = await http.post(
+      Uri.parse('$_baseUrl/tokens/$tokenId/generate-qr'),
+      headers: _headers,
+    );
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body);
+      return QrSessionModel.fromJson(body['data']);
+    }
+    throw Exception('Failed to generate QR: ${res.body}');
+  }
+
   // ==================== MENU ====================
 
   Future<List<MenuModel>> getTodayMenu() async {
