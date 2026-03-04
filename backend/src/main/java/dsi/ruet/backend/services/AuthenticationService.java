@@ -6,14 +6,19 @@ import dsi.ruet.backend.dto.auth.SignupRequest;
 import dsi.ruet.backend.dto.auth.SignupResponse;
 import dsi.ruet.backend.dto.auth.OtpResponse;
 import dsi.ruet.backend.dto.auth.OtpVerificationResponse;
+import dsi.ruet.backend.dto.auth.ResetPasswordRequest;
+import dsi.ruet.backend.dto.ApiResponse;
 import dsi.ruet.backend.exception.AuthenticationException;
 import dsi.ruet.backend.exception.ResourceNotFoundException;
 import dsi.ruet.backend.models.User;
 import dsi.ruet.backend.models.StudentInfo;
 import dsi.ruet.backend.models.Hall;
+import dsi.ruet.backend.models.enums.Role;
 import dsi.ruet.backend.repositories.UserRepository;
 import dsi.ruet.backend.repositories.StudentInfoRepository;
 import dsi.ruet.backend.repositories.HallRepository;
+import dsi.ruet.backend.repositories.WalletRepository;
+import dsi.ruet.backend.models.Wallet;
 import dsi.ruet.backend.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,6 +46,9 @@ public class AuthenticationService {
 
     @Autowired
     private HallRepository hallRepository;
+
+    @Autowired
+    private WalletRepository walletRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -104,13 +112,13 @@ public class AuthenticationService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setName(request.getName());
 
-        // Create student info if user role is STUDENT
+        // Create student info for all roles except DINING_MANAGER
         StudentInfo studentInfo = null;
-        if ("STUDENT".equals(user.getRole().name())) {
-            // Validate required student fields
+        if (user.getRole() != Role.DINING_MANAGER) {
+            // Validate required student info fields
             if (request.getRoll() == null || request.getPhoneNo() == null || request.getRoomNo()==null) {
                 throw new IllegalArgumentException(
-                    "For STUDENT role, roll, roomNo and phoneNo are required");
+                    "For " + user.getRole().name() + " role, roll, roomNo and phoneNo are required");
             }
 
             studentInfo = new StudentInfo();
@@ -128,6 +136,12 @@ public class AuthenticationService {
             studentInfoRepository.save(studentInfo);
         }
         
+        // Create a wallet for this user with 0 balance
+        Wallet wallet = new Wallet();
+        wallet.setUser(user);
+        wallet.setBalance(java.math.BigDecimal.ZERO);
+        walletRepository.save(wallet);
+
         // Return signup success response
         SignupResponse response = new SignupResponse();
         response.setEmail(user.getEmail());
@@ -177,8 +191,8 @@ public class AuthenticationService {
             response.setHallName(user.getHall().getName());
         }
 
-        // If student role, include StudentInfo
-        if ("STUDENT".equals(user.getRole().name())) {
+        // Include StudentInfo for all roles except DINING_MANAGER
+        if (user.getRole() != Role.DINING_MANAGER) {
             StudentInfo studentInfo = studentInfoRepository.findById(user.getId())
                     .orElse(null);
             if (studentInfo != null) {
@@ -193,7 +207,7 @@ public class AuthenticationService {
 
     /**
      * Get current logged in user info based on email from JWT token
-     * Returns user info with StudentInfo if role is STUDENT
+     * Returns user info with StudentInfo for non-DINING_MANAGER roles
      */
     public AuthResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
@@ -213,8 +227,8 @@ public class AuthenticationService {
             response.setHallName(user.getHall().getName());
         }
 
-        // If student role, include StudentInfo
-        if ("STUDENT".equals(user.getRole().name())) {
+        // Include StudentInfo for all roles except DINING_MANAGER
+        if (user.getRole() != Role.DINING_MANAGER) {
             StudentInfo studentInfo = studentInfoRepository.findById(user.getId())
                     .orElse(null);
             if (studentInfo != null) {
@@ -227,7 +241,7 @@ public class AuthenticationService {
         return response;
     }
 
-    // ==================== OTP VERIFICATION (Ready for Implementation) ====================
+    // ==================== OTP VERIFICATION (Ready for Implementation) ==
 
     /**
      * Send OTP to user's email (step 1 of signup flow)
@@ -236,12 +250,14 @@ public class AuthenticationService {
      * @return OtpResponse indicating OTP was sent
      */
     public OtpResponse sendOtp(String email) {
-        // TODO: Later - check if email exists in Users table
-        
-        // For now: Accept any email
+        // Validate email is not empty
         if (email == null || email.isEmpty()) {
             throw new IllegalArgumentException("Email cannot be empty");
         }
+
+        // Check if email exists in Users table
+        userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Email not found. Please contact administrator to create your account."));
 
         // Generate random 6-digit OTP
         String otp = generateOTP(email);
@@ -373,5 +389,34 @@ public class AuthenticationService {
             System.err.println("Failed to send OTP email to " + email + ": " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Reset user password after email verification
+     * Assumes frontend has already verified the email via OTP
+     * @param request ResetPasswordRequest with email, newPassword, confirmPassword
+     * @return ApiResponse indicating success/failure
+     */
+    @Transactional
+    public ApiResponse<String> resetPassword(ResetPasswordRequest request) {
+        // Validate passwords match
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        // Validate password length
+        if (request.getNewPassword().length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+
+        // Find user by email
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+
+        // Hash and update password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return new ApiResponse<>("Password reset successfully", null);
     }
 }
