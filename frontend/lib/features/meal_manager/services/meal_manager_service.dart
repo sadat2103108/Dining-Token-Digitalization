@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/services/service_locator.dart';
-import '../models/credit_refund.dart';
-import '../models/meal_availability.dart';
 import '../models/meal_config.dart';
 import '../models/meal_history.dart';
 import '../models/credit_transaction.dart';
@@ -155,40 +153,17 @@ class MealManagerService {
   }
 
   // ---------------------------------------------------------------------------
-  // Meal Availability
+  // Meal Cancellation
   // ---------------------------------------------------------------------------
 
-  /// GET /meals/availability/{date}
-  Future<MealAvailability> getMealAvailability(String date) async {
+  /// POST /meals/config/{id}/cancel — Cancel a meal and auto-refund token holders.
+  Future<bool> cancelMeal(int mealId) async {
     try {
-      final response = await _apiClient.get('/meals/availability/$date');
-      final body = response.data as Map<String, dynamic>;
-      if (body['success'] == true && body['data'] != null) {
-        return MealAvailability.fromJson(body['data'] as Map<String, dynamic>);
-      }
-      return MealAvailability(date: date);
-    } catch (e) {
-      debugPrint('GetMealAvailability error: $e');
-      return MealAvailability(date: date);
-    }
-  }
-
-  /// PUT /meals/availability/{date}
-  /// Backend expects MealAvailabilityRequest: { date, isLunchAvailable, isDinnerAvailable }
-  Future<bool> updateMealAvailability(MealAvailability availability) async {
-    try {
-      final response = await _apiClient.put(
-        '/meals/availability/${availability.date}',
-        data: {
-          'date': availability.date,
-          'isLunchAvailable': availability.isLunchAvailable,
-          'isDinnerAvailable': availability.isDinnerAvailable,
-        },
-      );
+      final response = await _apiClient.post('/meals/config/$mealId/cancel');
       final body = response.data as Map<String, dynamic>;
       return body['success'] == true;
     } catch (e) {
-      debugPrint('UpdateMealAvailability error: $e');
+      debugPrint('CancelMeal error: $e');
       return false;
     }
   }
@@ -371,103 +346,6 @@ class MealManagerService {
       return [];
     } catch (e) {
       debugPrint('GetCreditHistory error: $e');
-      return [];
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Credit Refund
-  // ---------------------------------------------------------------------------
-
-  /// GET /refunds/pending — Fetch cancelled meals eligible for refund.
-  Future<List<RefundableMeal>> getRefundableMeals() async {
-    try {
-      final response = await _apiClient.get('/refunds/pending');
-      final body = response.data as Map<String, dynamic>;
-      if (body['success'] == true && body['data'] != null) {
-        final list = body['data'] as List<dynamic>;
-        return list
-            .map((e) =>
-                RefundableMeal.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      debugPrint('GetRefundableMeals error: $e');
-      return [];
-    }
-  }
-
-  /// GET /refunds/summary — Get refund summary stats.
-  Future<RefundSummary> getRefundSummary() async {
-    try {
-      final response = await _apiClient.get('/refunds/summary');
-      final body = response.data as Map<String, dynamic>;
-      if (body['success'] == true && body['data'] != null) {
-        return RefundSummary.fromJson(body['data'] as Map<String, dynamic>);
-      }
-      return const RefundSummary(
-        pendingCount: 0,
-        completedCount: 0,
-        totalAmountPending: 0,
-        totalAmountRefunded: 0,
-      );
-    } catch (e) {
-      debugPrint('GetRefundSummary error: $e');
-      return const RefundSummary(
-        pendingCount: 0,
-        completedCount: 0,
-        totalAmountPending: 0,
-        totalAmountRefunded: 0,
-      );
-    }
-  }
-
-  /// POST /refunds/process — Process refund for a single cancelled meal.
-  Future<bool> processRefund(String mealId) async {
-    try {
-      final response = await _apiClient.post(
-        '/refunds/process',
-        data: {'mealId': mealId},
-      );
-      final body = response.data as Map<String, dynamic>;
-      return body['success'] == true;
-    } catch (e) {
-      debugPrint('ProcessRefund error: $e');
-      return false;
-    }
-  }
-
-  /// POST /refunds/process-bulk — Process refund for multiple cancelled meals.
-  Future<bool> processBulkRefund(List<String> mealIds) async {
-    try {
-      final response = await _apiClient.post(
-        '/refunds/process-bulk',
-        data: {'mealIds': mealIds},
-      );
-      final body = response.data as Map<String, dynamic>;
-      return body['success'] == true;
-    } catch (e) {
-      debugPrint('ProcessBulkRefund error: $e');
-      return false;
-    }
-  }
-
-  /// GET /refunds/history — Fetch already-processed refunds.
-  Future<List<RefundableMeal>> getRefundHistory() async {
-    try {
-      final response = await _apiClient.get('/refunds/history');
-      final body = response.data as Map<String, dynamic>;
-      if (body['success'] == true && body['data'] != null) {
-        final list = body['data'] as List<dynamic>;
-        return list
-            .map((e) =>
-                RefundableMeal.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      debugPrint('GetRefundHistory error: $e');
       return [];
     }
   }

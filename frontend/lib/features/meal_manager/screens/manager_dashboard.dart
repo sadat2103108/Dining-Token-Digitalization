@@ -5,10 +5,9 @@ import '../widgets/meal_count_card.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/quick_action_tile.dart';
 import 'add_credit_page.dart';
-import 'credit_refund_page.dart';
 import 'set_price_page.dart';
 import 'set_menu_page.dart';
-import 'meal_availability_page.dart';
+import 'meal_cancellation_page.dart';
 import 'history_page.dart';
 
 /// The main dashboard for the Meal Manager role.
@@ -234,20 +233,11 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
           const SizedBox(height: 8),
 
           QuickActionTile(
-            label: 'Meal Availability',
-            description: 'Toggle meals on/off by date',
-            icon: Icons.event_available,
-            color: Colors.teal,
-            onTap: () => _goTo(const MealAvailabilityPage()),
-          ),
-          const SizedBox(height: 8),
-
-          QuickActionTile(
-            label: 'Credit Refund',
-            description: 'Refund credits for cancelled meals',
-            icon: Icons.currency_exchange,
+            label: 'Cancel Meal',
+            description: 'Cancel a meal & auto-refund students',
+            icon: Icons.cancel_outlined,
             color: Colors.red,
-            onTap: () => _goTo(const CreditRefundPage()),
+            onTap: () => _goTo(const MealCancellationPage()),
           ),
 
           const SizedBox(height: 24),

@@ -7,6 +7,7 @@ class MealConfig {
   final String menu;
   final String? purchaseDeadline; // HH:mm format
   final DateTime? createdAt;
+  final bool isClosed;
 
   const MealConfig({
     this.id,
@@ -16,6 +17,7 @@ class MealConfig {
     required this.menu,
     this.purchaseDeadline,
     this.createdAt,
+    this.isClosed = false,
   });
 
   factory MealConfig.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class MealConfig {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
+      isClosed: json['isClosed'] as bool? ?? json['closed'] as bool? ?? false,
     );
   }
 
@@ -50,6 +53,7 @@ class MealConfig {
     double? price,
     String? menu,
     String? purchaseDeadline,
+    bool? isClosed,
   }) {
     return MealConfig(
       id: id ?? this.id,
@@ -59,6 +63,7 @@ class MealConfig {
       menu: menu ?? this.menu,
       purchaseDeadline: purchaseDeadline ?? this.purchaseDeadline,
       createdAt: createdAt,
+      isClosed: isClosed ?? this.isClosed,
     );
   }
 }

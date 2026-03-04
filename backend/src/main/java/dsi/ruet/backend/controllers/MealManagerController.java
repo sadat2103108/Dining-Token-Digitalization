@@ -132,36 +132,20 @@ public class MealManagerController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== MEAL AVAILABILITY ====================
+    // ==================== MEAL CANCELLATION ====================
 
     /**
-     * GET /api/v1/meals/availability/{date}
-     * Check if lunch/dinner are available on a given date.
+     * POST /api/v1/meals/config/{id}/cancel
+     * Cancel a meal and auto-refund all students who purchased tokens.
+     * Sets isClosed = true, refunds wallets, deletes tokens.
      */
-    @GetMapping("/meals/availability/{date}")
-    public ResponseEntity<ApiResponse<MealAvailabilityResponse>> getMealAvailability(
-            @PathVariable String date,
+    @PostMapping("/meals/config/{id}/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelMeal(
+            @PathVariable Long id,
             Authentication authentication) {
 
         Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<MealAvailabilityResponse> response = mealManagerService.getMealAvailability(date, managerId);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * PUT /api/v1/meals/availability/{date}
-     * Update meal availability (close dining with auto-refund).
-     * Body: { "date": "2026-03-02", "isLunchAvailable": false, "isDinnerAvailable": true }
-     */
-    @PutMapping("/meals/availability/{date}")
-    public ResponseEntity<ApiResponse<MealAvailabilityResponse>> updateMealAvailability(
-            @PathVariable String date,
-            @RequestBody MealAvailabilityRequest request,
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<MealAvailabilityResponse> response =
-                mealManagerService.updateMealAvailability(date, request, managerId);
+        ApiResponse<Void> response = mealManagerService.cancelMeal(id, managerId);
         return ResponseEntity.ok(response);
     }
 
@@ -205,77 +189,6 @@ public class MealManagerController {
 
         Long managerId = getAuthenticatedUserId(authentication);
         ApiResponse<List<DailyCreditHistoryResponse>> response = mealManagerService.getCreditHistory(managerId);
-        return ResponseEntity.ok(response);
-    }
-
-    // ==================== REFUNDS ====================
-
-    /**
-     * GET /api/v1/refunds/pending
-     * Get all cancelled meals eligible for refund.
-     */
-    @GetMapping("/refunds/pending")
-    public ResponseEntity<ApiResponse<List<RefundableMealResponse>>> getRefundableMeals(
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<List<RefundableMealResponse>> response = mealManagerService.getRefundableMeals(managerId);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * GET /api/v1/refunds/summary
-     * Get refund summary stats (pending count, completed count, amounts).
-     */
-    @GetMapping("/refunds/summary")
-    public ResponseEntity<ApiResponse<RefundSummaryResponse>> getRefundSummary(
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<RefundSummaryResponse> response = mealManagerService.getRefundSummary(managerId);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * POST /api/v1/refunds/process
-     * Process refund for a single cancelled meal.
-     * Body: { "mealId": "1" }
-     */
-    @PostMapping("/refunds/process")
-    public ResponseEntity<ApiResponse<Void>> processRefund(
-            @RequestBody ProcessRefundRequest request,
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<Void> response = mealManagerService.processRefund(request.getMealId(), managerId);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * POST /api/v1/refunds/process-bulk
-     * Process refund for multiple cancelled meals at once.
-     * Body: { "mealIds": ["1", "2", "3"] }
-     */
-    @PostMapping("/refunds/process-bulk")
-    public ResponseEntity<ApiResponse<Void>> processBulkRefund(
-            @RequestBody BulkRefundRequest request,
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<Void> response = mealManagerService.processBulkRefund(request.getMealIds(), managerId);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * GET /api/v1/refunds/history
-     * Get all already-processed refunds.
-     */
-    @GetMapping("/refunds/history")
-    public ResponseEntity<ApiResponse<List<RefundableMealResponse>>> getRefundHistory(
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<List<RefundableMealResponse>> response = mealManagerService.getRefundHistory(managerId);
         return ResponseEntity.ok(response);
     }
 

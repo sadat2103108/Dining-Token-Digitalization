@@ -91,21 +91,45 @@ public class StudentController {
 
     /**
      * GET /meals/available
-     * Returns available (purchasable, non-closed) meals for the student's hall today.
+     * Returns available (purchasable, non-closed) meals for the student's hall.
+     * Includes both today's and tomorrow's meals so students can purchase in advance.
      */
     @GetMapping("/meals/available")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAvailableMeals(
             @AuthenticationPrincipal User currentUser) {
 
         User user = userRepository.findById(currentUser.getId()).orElseThrow();
-        Long hallId = user.getHall().getId();
-        List<Meal> meals = mealRepository.findByHallIdAndMealDate(hallId, LocalDate.now());
+        Long hallId = user.getHall() != null ? user.getHall().getId() : null;
+
+        if (hallId == null) {
+            return ResponseEntity.ok(new ApiResponse<>("No hall assigned.", List.of()));
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate tomorrow = today.plusDays(1);
+
+        // Fetch meals for both today and tomorrow
+        List<Meal> todayMeals = mealRepository.findByHallIdAndMealDate(hallId, today);
+        List<Meal> tomorrowMeals = mealRepository.findByHallIdAndMealDate(hallId, tomorrow);
+
+        List<Meal> allMeals = new java.util.ArrayList<>(todayMeals);
+        allMeals.addAll(tomorrowMeals);
 
         LocalDateTime now = LocalDateTime.now();
 
-        List<Map<String, Object>> data = meals.stream()
+        List<Map<String, Object>> data = allMeals.stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getIsClosed()))
-                .filter(m -> m.getPurchaseDeadline() == null || now.isBefore(m.getPurchaseDeadline()))
+                .filter(m -> {
+                    // Use purchaseEndTime as deadline; if null, meal is always available
+                    if (m.getPurchaseEndTime() != null) {
+                        return now.isBefore(m.getPurchaseEndTime());
+                    }
+                    // Also check purchaseDeadline for backward compat
+                    if (m.getPurchaseDeadline() != null) {
+                        return now.isBefore(m.getPurchaseDeadline());
+                    }
+                    return true; // no deadline set = available by default
+                })
                 .map(this::mealToMap)
                 .collect(Collectors.toList());
 

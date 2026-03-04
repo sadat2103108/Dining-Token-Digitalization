@@ -251,81 +251,42 @@ public class MealManagerService {
         return new ApiResponse<>("Meal configs for " + dateStr, configs);
     }
 
-    // ==================== MEAL AVAILABILITY ====================
+    // ==================== MEAL CANCELLATION ====================
 
     /**
-     * GET /api/v1/meals/availability/{date}
-     * Returns whether lunch/dinner are available (not closed) on the given date.
-     */
-    public ApiResponse<MealAvailabilityResponse> getMealAvailability(String dateStr, Long managerId) {
-        User manager = findUserById(managerId);
-        LocalDate date = LocalDate.parse(dateStr, DATE_FMT);
-
-        List<Meal> meals = mealRepository.findByHallIdAndMealDate(manager.getHall().getId(), date);
-
-        boolean lunchAvailable = true;
-        boolean dinnerAvailable = true;
-
-        for (Meal meal : meals) {
-            if (meal.getMealType() == MealType.LUNCH && Boolean.TRUE.equals(meal.getIsClosed())) {
-                lunchAvailable = false;
-            }
-            if (meal.getMealType() == MealType.DINNER && Boolean.TRUE.equals(meal.getIsClosed())) {
-                dinnerAvailable = false;
-            }
-        }
-
-        // If no config exists for a meal type, it's "not available"
-        boolean hasLunch = meals.stream().anyMatch(m -> m.getMealType() == MealType.LUNCH);
-        boolean hasDinner = meals.stream().anyMatch(m -> m.getMealType() == MealType.DINNER);
-        if (!hasLunch) lunchAvailable = false;
-        if (!hasDinner) dinnerAvailable = false;
-
-        boolean anyAvailable = lunchAvailable || dinnerAvailable;
-
-        MealAvailabilityResponse resp = new MealAvailabilityResponse(
-                dateStr, anyAvailable, lunchAvailable, dinnerAvailable);
-        return new ApiResponse<>("Meal availability for " + dateStr, resp);
-    }
-
-    /**
-     * PUT /api/v1/meals/availability/{date}
-     * Update meal availability (close dining with refund).
-     * When a meal type is set to unavailable (false):
-     *   1. Mark the meal as closed
-     *   2. Refund all ACTIVE token holders
-     *   3. Delete their tokens
+     * POST /api/v1/meals/config/{id}/cancel
+     * Cancel a meal and auto-refund all students who purchased tokens.
+     * Steps:
+     *   1. Validate the meal belongs to the manager's hall and is not already closed
+     *   2. Close the meal (isClosed = true)
+     *   3. Refund all non-USED token holders their wallet balance
+     *   4. Delete the refunded tokens
+     *   5. Mark refundedAt timestamp
      */
     @Transactional
-    public ApiResponse<MealAvailabilityResponse> updateMealAvailability(
-            String dateStr, MealAvailabilityRequest request, Long managerId) {
-
+    public ApiResponse<Void> cancelMeal(Long mealId, Long managerId) {
         User manager = findUserById(managerId);
-        LocalDate date = LocalDate.parse(dateStr, DATE_FMT);
+        Meal meal = findMealById(mealId);
 
-        List<Meal> meals = mealRepository.findByHallIdAndMealDate(manager.getHall().getId(), date);
-        int totalRefunds = 0;
-
-        for (Meal meal : meals) {
-            boolean shouldClose = false;
-
-            // Check if this meal type should be closed
-            if (meal.getMealType() == MealType.LUNCH && !request.isLunchAvailable()) {
-                shouldClose = true;
-            }
-            if (meal.getMealType() == MealType.DINNER && !request.isDinnerAvailable()) {
-                shouldClose = true;
-            }
-
-            // Close and refund if not already closed
-            if (shouldClose && !Boolean.TRUE.equals(meal.getIsClosed())) {
-                int refunds = closeMealAndRefund(meal, manager);
-                totalRefunds += refunds;
-            }
+        // Validate: meal must belong to manager's hall
+        if (!meal.getHall().getId().equals(manager.getHall().getId())) {
+            throw new IllegalArgumentException("This meal does not belong to your hall");
+        }
+        // Validate: meal must not already be closed/cancelled
+        if (Boolean.TRUE.equals(meal.getIsClosed())) {
+            throw new IllegalArgumentException("This meal is already cancelled");
         }
 
-        // Build response reflecting actual state after update
-        return getMealAvailability(dateStr, managerId);
+        // Close meal and refund all active token holders
+        int refundCount = closeMealAndRefund(meal, manager);
+
+        // Mark as refunded
+        meal.setRefundedAt(LocalDateTime.now());
+        mealRepository.save(meal);
+
+        String mealLabel = meal.getMealType().name() + " on " + meal.getMealDate().format(DATE_FMT);
+        return new ApiResponse<>(
+                "Meal cancelled: " + mealLabel + ". " + refundCount + " token(s) refunded.", null);
     }
 
     // ==================== REPORTS ====================
@@ -547,149 +508,6 @@ public class MealManagerService {
         return new ApiResponse<>("Credit history (last 30 days)", history);
     }
 
-    // ==================== REFUND ====================
-
-    /**
-     * GET /api/v1/refunds/pending
-     * Returns all closed meals in the manager's hall that have NOT been refunded yet.
-     * Each entry includes the list of students who still hold tokens.
-     */
-    public ApiResponse<List<RefundableMealResponse>> getRefundableMeals(Long managerId) {
-        User manager = findUserById(managerId);
-
-        List<Meal> pendingMeals = mealRepository
-                .findByHallIdAndIsClosedTrueAndRefundedAtIsNull(manager.getHall().getId());
-
-        List<RefundableMealResponse> result = pendingMeals.stream()
-                .map(meal -> toRefundableMealResponse(meal, "PENDING"))
-                .toList();
-
-        return new ApiResponse<>("Pending refundable meals", result);
-    }
-
-    /**
-     * GET /api/v1/refunds/summary
-     * Returns summary stats: how many meals are pending vs completed refunds,
-     * and the total BDT amounts for each.
-     */
-    public ApiResponse<RefundSummaryResponse> getRefundSummary(Long managerId) {
-        User manager = findUserById(managerId);
-        Long hallId = manager.getHall().getId();
-
-        int pendingCount = (int) mealRepository.countByHallIdAndIsClosedTrueAndRefundedAtIsNull(hallId);
-        int completedCount = (int) mealRepository.countByHallIdAndIsClosedTrueAndRefundedAtIsNotNull(hallId);
-
-        // Calculate pending amount: sum of (tokenCount * price) for each pending meal
-        List<Meal> pendingMeals = mealRepository.findByHallIdAndIsClosedTrueAndRefundedAtIsNull(hallId);
-        double totalPending = 0;
-        for (Meal meal : pendingMeals) {
-            long tokenCount = tokenRepository.countByMealId(meal.getId());
-            totalPending += meal.getPrice().multiply(BigDecimal.valueOf(tokenCount)).doubleValue();
-        }
-
-        // Calculate completed amount from REFUND coin transactions by this manager
-        List<Meal> completedMeals = mealRepository
-                .findByHallIdAndIsClosedTrueAndRefundedAtIsNotNullOrderByRefundedAtDesc(hallId);
-        double totalRefunded = 0;
-        for (Meal meal : completedMeals) {
-            // Approximate from price * tokens that were sold (tokens are deleted after refund)
-            // We track actual refund amounts from coin transactions instead
-        }
-        // Use coin transactions with type=REFUND for accurate total
-        LocalDateTime start = LocalDate.now().minusDays(365).atStartOfDay();
-        LocalDateTime end = LocalDate.now().plusDays(1).atStartOfDay();
-        List<CoinTransaction> refundTxs = coinTransactionRepository
-                .findRefundsBySenderAndDateRange(managerId, start, end);
-        totalRefunded = refundTxs.stream()
-                .map(tx -> (double) tx.getAmount())
-                .reduce(0.0, (a, b) -> a + b);
-
-        RefundSummaryResponse resp = new RefundSummaryResponse(
-                pendingCount, completedCount, totalPending, totalRefunded);
-        return new ApiResponse<>("Refund summary", resp);
-    }
-
-    /**
-     * POST /api/v1/refunds/process
-     * Process refund for a single cancelled meal.
-     * Refunds each token holder's wallet and deletes the tokens.
-     */
-    @Transactional
-    public ApiResponse<Void> processRefund(String mealIdStr, Long managerId) {
-        Long mealId = Long.parseLong(mealIdStr);
-        User manager = findUserById(managerId);
-        Meal meal = findMealById(mealId);
-
-        // Validate: meal must belong to manager's hall
-        if (!meal.getHall().getId().equals(manager.getHall().getId())) {
-            throw new IllegalArgumentException("This meal does not belong to your hall");
-        }
-        // Validate: meal must be closed
-        if (!Boolean.TRUE.equals(meal.getIsClosed())) {
-            throw new IllegalArgumentException("Meal is not closed. Close it first before refunding.");
-        }
-        // Validate: not already refunded
-        if (meal.getRefundedAt() != null) {
-            throw new IllegalArgumentException("This meal has already been refunded");
-        }
-
-        // Refund each token holder
-        closeMealAndRefund(meal, manager);
-
-        // Mark as refunded (closeMealAndRefund already sets isClosed=true)
-        meal.setRefundedAt(LocalDateTime.now());
-        mealRepository.save(meal);
-
-        return new ApiResponse<>("Refund processed successfully for meal " + mealIdStr, null);
-    }
-
-    /**
-     * POST /api/v1/refunds/process-bulk
-     * Process refunds for multiple cancelled meals at once.
-     */
-    @Transactional
-    public ApiResponse<Void> processBulkRefund(List<String> mealIds, Long managerId) {
-        int totalRefunded = 0;
-
-        for (String mealIdStr : mealIds) {
-            Long mealId = Long.parseLong(mealIdStr);
-            User manager = findUserById(managerId);
-            Meal meal = findMealById(mealId);
-
-            if (!meal.getHall().getId().equals(manager.getHall().getId())) {
-                continue; // skip meals not in manager's hall
-            }
-            if (!Boolean.TRUE.equals(meal.getIsClosed()) || meal.getRefundedAt() != null) {
-                continue; // skip non-closed or already-refunded meals
-            }
-
-            closeMealAndRefund(meal, manager);
-            meal.setRefundedAt(LocalDateTime.now());
-            mealRepository.save(meal);
-            totalRefunded++;
-        }
-
-        return new ApiResponse<>("Bulk refund completed. " + totalRefunded + " meals refunded.", null);
-    }
-
-    /**
-     * GET /api/v1/refunds/history
-     * Returns all closed meals that have already been refunded.
-     */
-    public ApiResponse<List<RefundableMealResponse>> getRefundHistory(Long managerId) {
-        User manager = findUserById(managerId);
-
-        List<Meal> completedMeals = mealRepository
-                .findByHallIdAndIsClosedTrueAndRefundedAtIsNotNullOrderByRefundedAtDesc(
-                        manager.getHall().getId());
-
-        List<RefundableMealResponse> result = completedMeals.stream()
-                .map(meal -> toRefundableMealResponse(meal, "COMPLETED"))
-                .toList();
-
-        return new ApiResponse<>("Refund history", result);
-    }
-
     // ==================== HELPER METHODS ====================
 
     /** Find user by ID or throw 404 */
@@ -742,52 +560,21 @@ public class MealManagerService {
         tx.setSender(sender);
         tx.setReceiver(receiver);
         tx.setAmount(amount.longValue());
-        tx.setType("TOPUP".equalsIgnoreCase(typeStr) ? TransactionType.TOPUP : TransactionType.TRANSACTION);
+        TransactionType type;
+        switch (typeStr.toUpperCase()) {
+            case "TOPUP":
+                type = TransactionType.TOPUP;
+                break;
+            case "REFUND":
+                type = TransactionType.REFUND;
+                break;
+            default:
+                type = TransactionType.TRANSACTION;
+                break;
+        }
+        tx.setType(type);
         tx.setCreatedAt(LocalDateTime.now());
         coinTransactionRepository.save(tx);
-    }
-
-    /**
-     * Convert a closed Meal entity to a RefundableMealResponse DTO.
-     * Includes the list of students who still hold tokens (for pending meals).
-     */
-    private RefundableMealResponse toRefundableMealResponse(Meal meal, String status) {
-        List<Token> tokens = tokenRepository.findByMealId(meal.getId());
-
-        List<StudentTokenResponse> students = tokens.stream()
-                .filter(t -> t.getStatus() != TokenStatus.USED)
-                .map(token -> {
-                    User owner = token.getOwner();
-                    String roll = studentInfoRepository.findById(owner.getId())
-                            .map(StudentInfo::getRoll).orElse(owner.getId().toString());
-
-                    return new StudentTokenResponse(
-                            owner.getId().toString(),
-                            owner.getName(),
-                            roll,
-                            meal.getPrice().doubleValue()
-                    );
-                }).toList();
-
-        int tokensSold = (int) tokenRepository.countByMealId(meal.getId());
-        // For completed refunds, tokens are already deleted, so tokensSold = 0
-        // We can infer from status
-        double totalRefundAmount = meal.getPrice().multiply(java.math.BigDecimal.valueOf(tokensSold)).doubleValue();
-
-        String refundedAtStr = meal.getRefundedAt() != null
-                ? meal.getRefundedAt().toString() : null;
-
-        return new RefundableMealResponse(
-                meal.getId().toString(),
-                meal.getMealDate().format(DATE_FMT),
-                meal.getMealType().name(),
-                tokensSold,
-                meal.getPrice().doubleValue(),
-                totalRefundAmount,
-                students,
-                status,
-                refundedAtStr
-        );
     }
 
     /** Convert Meal entity to MealConfigResponse DTO */
