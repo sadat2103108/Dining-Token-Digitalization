@@ -221,7 +221,10 @@ class StudentApiService {
   /// Get today's available meals
   Future<List<MenuModel>> getTodayMenu() async {
     try {
-      final res = await http.get(Uri.parse('$_baseUrl/meals/today'));
+      final res = await http.get(
+        Uri.parse('$_baseUrl/meals/today'),
+        headers: _headers,
+      );
 
       if (res.statusCode == 200) {
         try {
