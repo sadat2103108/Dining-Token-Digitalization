@@ -88,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       // Navigate based on role
-      await _navigateByRole(response.role);
+      await _navigateByRole(response.role, response.userId);
     } catch (e) {
       if (!mounted) return;
 
@@ -105,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _navigateByRole(String role) async {
+  Future<void> _navigateByRole(String role, int userId) async {
     // Navigate to the appropriate home screen based on role
     // Token is already saved to storage by the auth service
     final token = await ServiceLocator.tokenStorage.getToken() ?? '';
@@ -114,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
 
     switch (role.toUpperCase()) {
       case 'STUDENT':
-        screen = StudentHome(token: token);
+        screen = StudentHome(token: token, userId: userId);
         break;
       case 'MEAL_MANAGER':
         screen = const ManagerDashboard();
@@ -126,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
         );
         break;
       default:
-        screen = StudentHome(token: token);
+        screen = StudentHome(token: token, userId: userId);
     }
 
     // Push the screen and remove all previous routes (so user can't go back)
