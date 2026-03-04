@@ -26,7 +26,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   String? _errorMessage;
 
   // --- Filter state ---
-  String? _selectedMealType;   // null = All
+  String? _selectedMealType; // null = All
 
   // --- Data lists ---
   List<MarketplacePost> openPosts = [];
@@ -114,7 +114,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   // --- Action methods (real API calls) ---
 
-  Future<void> sendBuyRequest(String postId, {required String paymentType}) async {
+  Future<void> sendBuyRequest(
+    String postId, {
+    required String paymentType,
+  }) async {
     try {
       await widget.apiService.sendBuyRequest(postId, paymentType: paymentType);
       if (!mounted) return;
@@ -194,7 +197,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       color: Colors.blue.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.account_balance_wallet, color: Colors.blue),
+                    child: const Icon(
+                      Icons.account_balance_wallet,
+                      color: Colors.blue,
+                    ),
                   ),
                   title: const Text('Credit Transfer'),
                   subtitle: const Text('Pay from wallet balance'),
@@ -220,9 +226,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     try {
       await widget.apiService.confirmListing(listingId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Listing $listingId confirmed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Listing $listingId confirmed')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -239,9 +245,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     try {
       await widget.apiService.rejectListing(listingId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Listing $listingId rejected')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Listing $listingId rejected')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -258,9 +264,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     try {
       await widget.apiService.cancelPurchase(purchaseId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Purchase $purchaseId cancelled')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Purchase $purchaseId cancelled')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -279,14 +285,49 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         CreateSellRequest(tokenId: int.parse(tokenId)),
       );
       if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Token $tokenId listed for sale')));
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Token $tokenId listed for sale')),
+        SnackBar(content: Text('Sell failed: $e'), backgroundColor: Colors.red),
       );
+    }
+    await _loadData();
+  }
+
+  Future<void> cancelSellListing(String listingId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Listing'),
+        content: const Text('Are you sure you want to cancel this sell post?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await widget.apiService.cancelSellRequest(listingId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Listing cancelled')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Sell failed: $e'),
+          content: Text('Cancel failed: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -317,15 +358,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _buildError(theme)
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildBrowseTab(theme),
-                    _buildMyTokensTab(theme),
-                    _buildActivityTab(theme),
-                  ],
-                ),
+          ? _buildError(theme)
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildBrowseTab(theme),
+                _buildMyTokensTab(theme),
+                _buildActivityTab(theme),
+              ],
+            ),
     );
   }
 
@@ -338,12 +379,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: theme.colorScheme.error),
+            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
             const SizedBox(height: 16),
-            Text(_errorMessage!,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyLarge),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge,
+            ),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _loadData,
@@ -360,9 +402,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   // TAB 1 — BROWSE  (existing UI preserved)
   // ───────────────────────────────────────────────────────────────────────────
 
-  /// Returns posts filtered by the current meal-type selection.
+  /// Returns posts filtered by the current meal-type selection,
+  /// excluding the current user's own posts.
   List<MarketplacePost> get _filteredPosts {
+    final currentUserId = widget.apiService.userId;
     return openPosts.where((p) {
+      // Hide own posts from browse
+      if (currentUserId != null && p.sellerId == currentUserId) {
+        return false;
+      }
       if (_selectedMealType != null && p.mealType != _selectedMealType) {
         return false;
       }
@@ -375,10 +423,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     showDialog(
       context: context,
       builder: (ctx) {
-        return _SellerProfileDialog(
-          apiService: widget.apiService,
-          post: post,
-        );
+        return _SellerProfileDialog(apiService: widget.apiService, post: post);
       },
     );
   }
@@ -402,7 +447,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.5),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: theme.colorScheme.outlineVariant,
@@ -420,10 +466,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                             value: null,
                             child: Text('All Meals'),
                           ),
-                          ...mealTypes.map((type) => DropdownMenuItem<String?>(
-                                value: type,
-                                child: Text(type),
-                              )),
+                          ...mealTypes.map(
+                            (type) => DropdownMenuItem<String?>(
+                              value: type,
+                              child: Text(type),
+                            ),
+                          ),
                         ],
                         onChanged: (v) => setState(() => _selectedMealType = v),
                       ),
@@ -438,11 +486,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           // --- Sell Request List ---
           Expanded(
             child: filtered.isEmpty
-                ? _emptyState(theme, Icons.storefront_outlined,
-                    'No listings available')
+                ? _emptyState(
+                    theme,
+                    Icons.storefront_outlined,
+                    'No listings available',
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final req = filtered[index];
@@ -461,10 +514,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                 onTap: () => _showSellerProfile(req),
                                 child: CircleAvatar(
                                   radius: 24,
-                                  backgroundColor:
-                                      Colors.blue.withOpacity(0.2),
+                                  backgroundColor: Colors.blue.withOpacity(0.2),
                                   child: Text(
-                                    req.sellerName.isNotEmpty ? req.sellerName[0] : '?',
+                                    req.sellerName.isNotEmpty
+                                        ? req.sellerName[0]
+                                        : '?',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
@@ -478,8 +532,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                               // Info
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     GestureDetector(
                                       onTap: () => _showSellerProfile(req),
@@ -487,50 +540,50 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                         req.sellerName,
                                         style: theme.textTheme.titleSmall
                                             ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
                                         Container(
-                                          padding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: req.mealType == 'Lunch'
-                                                ? Colors.orange
-                                                    .withOpacity(0.15)
-                                                : Colors.deepPurple
-                                                    .withOpacity(0.15),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                                ? Colors.orange.withOpacity(
+                                                    0.15,
+                                                  )
+                                                : Colors.deepPurple.withOpacity(
+                                                    0.15,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                           child: Text(
                                             req.mealType,
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
-                                              color:
-                                                  req.mealType == 'Lunch'
-                                                      ? Colors
-                                                          .orange.shade800
-                                                      : Colors.deepPurple,
+                                              color: req.mealType == 'Lunch'
+                                                  ? Colors.orange.shade800
+                                                  : Colors.deepPurple,
                                             ),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
                                           '৳${req.mealPrice}',
-                                          style: theme
-                                              .textTheme.titleSmall
+                                          style: theme.textTheme.titleSmall
                                               ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: theme
-                                                .colorScheme.primary,
-                                          ),
+                                                fontWeight: FontWeight.bold,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -539,9 +592,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                       req.mealDate,
                                       style: theme.textTheme.bodySmall
                                           ?.copyWith(
-                                        color: theme.colorScheme
-                                            .onSurfaceVariant,
-                                      ),
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -549,11 +603,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
                               // Buy Now button
                               FilledButton(
-                                onPressed: () => _showPaymentMethodPicker(req.postId),
+                                onPressed: () =>
+                                    _showPaymentMethodPicker(req.postId),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 8),
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -579,7 +636,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget _buildMyTokensTab(ThemeData theme) {
     if (myTokens.isEmpty) {
       return _emptyState(
-          theme, Icons.confirmation_number_outlined, 'No tokens yet');
+        theme,
+        Icons.confirmation_number_outlined,
+        'No tokens yet',
+      );
     }
 
     return RefreshIndicator(
@@ -655,7 +715,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: mealColor.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(8),
@@ -674,8 +736,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                 const SizedBox(width: 8),
                                 Text(
                                   '৳${token.price}',
-                                  style:
-                                      theme.textTheme.titleSmall?.copyWith(
+                                  style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: theme.colorScheme.primary,
                                   ),
@@ -686,8 +747,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                             Text(
                               token.date,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color:
-                                    theme.colorScheme.onSurfaceVariant,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -697,7 +757,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       // Status badge
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(10),
@@ -705,8 +767,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(statusIcon,
-                                size: 16, color: statusColor),
+                            Icon(statusIcon, size: 16, color: statusColor),
                             const SizedBox(width: 4),
                             Text(
                               token.status,
@@ -733,8 +794,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                         label: const Text('Sell This Token'),
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.green,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -757,8 +817,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   Widget _buildActivityTab(ThemeData theme) {
     if (myListings.isEmpty && myPurchases.isEmpty) {
-      return _emptyState(
-          theme, Icons.receipt_long_outlined, 'No activity yet');
+      return _emptyState(theme, Icons.receipt_long_outlined, 'No activity yet');
     }
 
     return RefreshIndicator(
@@ -815,18 +874,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         statusIcon = Icons.help_outline;
     }
 
-    final Color mealColor =
-        listing.mealType == 'Lunch' ? Colors.orange : Colors.deepPurple;
-    final remaining = _remainingTime(listing.buyerRequestedAt != null
-        ? DateTime.tryParse(listing.buyerRequestedAt!)
-        : null);
+    final Color mealColor = listing.mealType == 'Lunch'
+        ? Colors.orange
+        : Colors.deepPurple;
+    final remaining = _remainingTime(
+      listing.buyerRequestedAt != null
+          ? DateTime.tryParse(listing.buyerRequestedAt!)
+          : null,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -865,7 +925,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: mealColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
@@ -891,7 +953,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                           ),
                         ],
                       ),
-                      if (listing.buyerName != null && listing.buyerName!.isNotEmpty) ...[
+                      if (listing.buyerName != null &&
+                          listing.buyerName!.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           'Buyer: ${listing.buyerName!}',
@@ -907,7 +970,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
@@ -931,6 +996,27 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               ],
             ),
 
+            // Open → cancel button
+            if (listing.status == 'OPEN') ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => cancelSellListing(listing.listingId),
+                  icon: const Icon(Icons.cancel_outlined, size: 18),
+                  label: const Text('Cancel Listing'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
             // Pending → timer + confirm/reject
             if (listing.status == 'PENDING') ...[
               const SizedBox(height: 12),
@@ -940,8 +1026,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.timer_outlined,
-                          size: 16, color: Colors.orange),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Expires in $remaining',
@@ -958,14 +1047,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () =>
-                          confirmListing(listing.listingId),
+                      onPressed: () => confirmListing(listing.listingId),
                       icon: const Icon(Icons.check, size: 18),
                       label: const Text('Confirm'),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -975,15 +1062,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          rejectListing(listing.listingId),
+                      onPressed: () => rejectListing(listing.listingId),
                       icon: const Icon(Icons.close, size: 18),
                       label: const Text('Reject'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1019,18 +1104,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         statusIcon = Icons.help_outline;
     }
 
-    final Color mealColor =
-        purchase.mealType == 'Lunch' ? Colors.orange : Colors.deepPurple;
-    final remaining = _remainingTime(purchase.buyerRequestedAt != null
-        ? DateTime.tryParse(purchase.buyerRequestedAt!)
-        : null);
+    final Color mealColor = purchase.mealType == 'Lunch'
+        ? Colors.orange
+        : Colors.deepPurple;
+    final remaining = _remainingTime(
+      purchase.buyerRequestedAt != null
+          ? DateTime.tryParse(purchase.buyerRequestedAt!)
+          : null,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -1068,7 +1154,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: mealColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
@@ -1101,7 +1189,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
@@ -1134,8 +1224,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.timer_outlined,
-                          size: 16, color: Colors.orange),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Expires in $remaining',
@@ -1151,8 +1244,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () =>
-                      cancelPurchase(purchase.purchaseId),
+                  onPressed: () => cancelPurchase(purchase.purchaseId),
                   icon: const Icon(Icons.cancel_outlined, size: 18),
                   label: const Text('Cancel Request'),
                   style: OutlinedButton.styleFrom(
@@ -1201,10 +1293,7 @@ class _SellerProfileDialog extends StatefulWidget {
   final StudentApiService apiService;
   final MarketplacePost post;
 
-  const _SellerProfileDialog({
-    required this.apiService,
-    required this.post,
-  });
+  const _SellerProfileDialog({required this.apiService, required this.post});
 
   @override
   State<_SellerProfileDialog> createState() => _SellerProfileDialogState();
@@ -1265,9 +1354,7 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
     final roomNo = _profile?.roomNo ?? 'N/A';
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: _isLoading
@@ -1313,13 +1400,28 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  _profileRow(theme, Icons.badge_outlined, 'Student ID', studentId),
+                  _profileRow(
+                    theme,
+                    Icons.badge_outlined,
+                    'Student ID',
+                    studentId,
+                  ),
                   const SizedBox(height: 10),
                   _profileRow(theme, Icons.phone_outlined, 'Mobile', mobile),
                   const SizedBox(height: 10),
-                  _profileRow(theme, Icons.apartment_outlined, 'Hall Name', hallName),
+                  _profileRow(
+                    theme,
+                    Icons.apartment_outlined,
+                    'Hall Name',
+                    hallName,
+                  ),
                   const SizedBox(height: 10),
-                  _profileRow(theme, Icons.door_front_door_outlined, 'Room No', roomNo),
+                  _profileRow(
+                    theme,
+                    Icons.door_front_door_outlined,
+                    'Room No',
+                    roomNo,
+                  ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -1339,7 +1441,12 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
     );
   }
 
-  Widget _profileRow(ThemeData theme, IconData icon, String label, String value) {
+  Widget _profileRow(
+    ThemeData theme,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Row(
       children: [
         Icon(icon, size: 20, color: theme.colorScheme.primary),

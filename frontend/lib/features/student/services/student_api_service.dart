@@ -1,27 +1,34 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:frontend/core/constants/api_constants.dart';
 import '../models/models.dart';
 
 class StudentApiService {
-  static const String _baseUrl = 'http://10.0.2.2:8080/api/v1'; // Android emulator → localhost
+  // Use ApiConstants base URL instead of hardcoded emulator URL
+  static const String _baseUrl = ApiConstants.baseUrl;
   final String _token;
-  final int? _userId; // needed for marketplace X-User-Id header
+  final int? _userId;
+
+  /// Public accessor for the current user's ID (used to filter own posts, etc.)
+  int? get userId => _userId;
 
   StudentApiService({required String token, int? userId})
-      : _token = token,
-        _userId = userId;
+    : _token = token,
+      _userId = userId {
+    print('StudentApiService initialized with base URL: $_baseUrl');
+    print('Token: ${_token.substring(0, 20)}...');
+  }
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $_token',
+  };
 
-  /// Headers for marketplace endpoints that require X-User-Id.
   Map<String, String> get _marketplaceHeaders => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_token',
-        if (_userId != null) 'X-User-Id': _userId.toString(),
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $_token',
+    if (_userId != null) 'X-User-Id': _userId.toString(),
+  };
 
   // ==================== AUTH ====================
 
@@ -64,14 +71,35 @@ class StudentApiService {
 
   // ==================== WALLET ====================
 
-  /// NOTE: /wallet/me does NOT exist in the backend.
-  /// The only wallet endpoints are meal-manager-only (/wallet/topup, /wallet/student/{id}).
-  /// TODO: Backend needs a student-facing wallet balance endpoint.
+  /// GET /students/wallet
+  /// Get student's current wallet balance
   Future<WalletModel> getWalletBalance() async {
-    throw UnimplementedError(
-      'GET /wallet/me does not exist in the backend. '
-      'A student-facing wallet balance endpoint is needed.',
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/students/wallet'),
+        headers: _headers,
+      );
+
+      if (res.statusCode == 200) {
+        try {
+          final body = jsonDecode(res.body);
+          // Response is wrapped in ApiResponse: { "message": "...", "data": { "balance": ... } }
+          final data = body['data'] as Map<String, dynamic>? ?? body;
+
+          final balance = (data['balance'] as num?)?.toDouble() ?? 0.0;
+          return WalletModel(balance: balance);
+        } catch (e) {
+          print('Error parsing wallet response: $e, body: ${res.body}');
+          throw Exception('Invalid wallet response format: $e');
+        }
+      } else {
+        print('Wallet fetch failed with status ${res.statusCode}: ${res.body}');
+        throw Exception('Failed to fetch wallet (${res.statusCode})');
+      }
+    } catch (e) {
+      print('Exception in getWalletBalance: $e');
+      throw Exception('Failed to fetch wallet: $e');
+    }
   }
 
   /// NOTE: /wallet/topup exists but is MEAL_MANAGER only with different DTO.
@@ -87,27 +115,79 @@ class StudentApiService {
   // ==================== TOKENS ====================
 
   Future<List<TokenModel>> getMyTokens() async {
-    final res = await http.get(
-      Uri.parse('$_baseUrl/tokens/me'),
-      headers: _headers,
-    );
-    if (res.statusCode == 200) {
-      final body = jsonDecode(res.body);
-      final List data = body['data'];
-      return data.map((e) => TokenModel.fromJson(e)).toList();
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/tokens/me'),
+        headers: _headers,
+      );
+
+      if (res.statusCode == 200) {
+        try {
+          final body = jsonDecode(res.body);
+
+          // Handle both wrapped and unwrapped responses
+          final data = body is List ? body : (body['data'] as List? ?? []);
+
+          return data.map((e) => TokenModel.fromJson(e)).toList();
+        } catch (e) {
+          print('Error parsing token response: $e, body: ${res.body}');
+          throw Exception('Invalid response format: $e');
+        }
+      } else {
+        print('Token fetch failed with status ${res.statusCode}: ${res.body}');
+        throw Exception(
+          'Failed to fetch tokens (${res.statusCode}): ${res.body}',
+        );
+      }
+    } catch (e) {
+      print('Exception in getMyTokens: $e');
+      throw Exception('Failed to fetch tokens: $e');
     }
-    throw Exception('Failed to fetch tokens');
   }
 
-  /// NOTE: /tokens/available does NOT exist in the backend.
-  /// This fetches the student's own tokens and filters ACTIVE ones as a workaround.
-  /// TODO: Backend needs a dedicated /tokens/available or /meals/available endpoint.
+  /// GET /meals/available
+  /// Get available meals that can be purchased as tokens
   Future<List<AvailableToken>> getAvailableTokens() async {
-    // No backend endpoint exists — throw descriptive error
-    throw UnimplementedError(
-      'GET /tokens/available does not exist in the backend. '
-      'A dedicated endpoint is needed to list purchasable meals.',
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/meals/available'),
+        headers: _headers,
+      );
+
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        final data = body['data'] as List? ?? [];
+
+        return data.map((e) {
+          // Map backend meal DTO to AvailableToken
+          final mealType = (e['mealType'] as String?) ?? 'Unknown';
+          // Capitalize: LUNCH -> Lunch, DINNER -> Dinner
+          final tokenType =
+              mealType[0].toUpperCase() + mealType.substring(1).toLowerCase();
+          final menuStr = (e['menu'] as String?) ?? 'No menu available';
+          final menuItems = menuStr
+              .split(',')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          final price = e['price'] is num ? (e['price'] as num).toInt() : 0;
+          final time = (e['purchaseStartTime'] as String?) ?? '12:00 PM';
+
+          return AvailableToken(
+            mealId: (e['id'] as num).toInt(),
+            tokenType: tokenType,
+            price: price,
+            time: time,
+            menu: menuItems.isEmpty ? ['No menu available'] : menuItems,
+          );
+        }).toList();
+      } else {
+        throw Exception('Failed to fetch available tokens (${res.statusCode})');
+      }
+    } catch (e) {
+      print('Exception in getAvailableTokens: $e');
+      throw Exception('Failed to fetch available tokens: $e');
+    }
   }
 
   Future<TokenModel> purchaseToken(PurchaseTokenRequest request) async {
@@ -137,13 +217,38 @@ class StudentApiService {
 
   // ==================== MENU ====================
 
-  /// NOTE: /menu/today does NOT exist in the backend.
-  /// TODO: Backend needs a student-facing menu endpoint.
+  /// GET /meals/today
+  /// Get today's available meals
   Future<List<MenuModel>> getTodayMenu() async {
-    throw UnimplementedError(
-      'GET /menu/today does not exist in the backend. '
-      'A student-facing menu endpoint is needed.',
-    );
+    try {
+      final res = await http.get(Uri.parse('$_baseUrl/meals/today'));
+
+      if (res.statusCode == 200) {
+        try {
+          final body = jsonDecode(res.body);
+          final data = body is List ? body : (body['data'] as List? ?? []);
+
+          return data
+              .map(
+                (e) => MenuModel(
+                  mealType: e['mealType'] ?? 'Unknown',
+                  time: e['purchaseStartTime'] ?? '12:00 PM',
+                  items: [e['menu'] ?? 'No menu available'],
+                ),
+              )
+              .toList();
+        } catch (e) {
+          print('Error parsing menu response: $e, body: ${res.body}');
+          throw Exception('Invalid menu response format: $e');
+        }
+      } else {
+        print('Menu fetch failed with status ${res.statusCode}: ${res.body}');
+        throw Exception('Failed to fetch menu (${res.statusCode})');
+      }
+    } catch (e) {
+      print('Exception in getTodayMenu: $e');
+      throw Exception('Failed to fetch menu: $e');
+    }
   }
 
   /// NOTE: /menu/full does NOT exist in the backend.
@@ -213,7 +318,10 @@ class StudentApiService {
     throw Exception('Failed to fetch my purchases');
   }
 
-  Future<void> sendBuyRequest(String postId, {required String paymentType}) async {
+  Future<void> sendBuyRequest(
+    String postId, {
+    required String paymentType,
+  }) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/marketplace/buy'),
       headers: _marketplaceHeaders,
@@ -280,13 +388,29 @@ class StudentApiService {
 
   // ==================== TRANSACTIONS ====================
 
-  /// NOTE: /students/me/transactions does NOT exist in the backend.
-  /// TODO: Backend needs a student transaction history endpoint.
+  /// GET /students/transactions
+  /// Get student's transaction history
   Future<List<TransactionData>> getTransactions() async {
-    throw UnimplementedError(
-      'GET /students/me/transactions does not exist in the backend. '
-      'A student transaction history endpoint is needed.',
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/students/transactions'),
+        headers: _headers,
+      );
+
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        final data = body['data'] as List? ?? [];
+        return data
+            .map((e) => TransactionData.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        print('Transactions fetch failed: ${res.statusCode}: ${res.body}');
+        throw Exception('Failed to fetch transactions (${res.statusCode})');
+      }
+    } catch (e) {
+      print('Exception in getTransactions: $e');
+      throw Exception('Failed to fetch transactions: $e');
+    }
   }
 
   // ==================== STUDENT PROFILE ====================

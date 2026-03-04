@@ -96,7 +96,7 @@ class _DiningAppState extends State<DiningApp> {
       );
     } else {
       // Default to student home for 'STUDENT' or other roles
-      return StudentHome(token: _token);
+      return StudentHome(token: _token, userId: _userId);
     }
   }
 }

@@ -4,11 +4,12 @@ import '../models/meal_config.dart';
 import '../services/meal_manager_service.dart';
 import '../widgets/refund_meal_card.dart';
 
-/// Page for managing credit refunds when dining is cancelled for specific days.
+/// Page for managing credit refunds.
 ///
-/// Displays a list of cancelled meal days with pending refunds,
-/// allows the manager to select individual or bulk refunds, and
-/// shows a history tab of completed refunds.
+/// The first tab shows **today's meals** so the manager can refund
+/// everyone who bought a token for a specific meal in one tap
+/// (uses POST /refunds/process-bulk).
+/// The second tab shows completed refund history.
 class CreditRefundPage extends StatefulWidget {
   const CreditRefundPage({super.key});
 
@@ -24,11 +25,9 @@ class _CreditRefundPageState extends State<CreditRefundPage>
 
   // State
   bool _loading = true;
-  List<RefundableMeal> _pendingMeals = [];
+  List<MealConfig> _todayMeals = [];
   List<RefundableMeal> _historyMeals = [];
-  RefundSummary? _summary;
-  final Set<String> _selectedIds = {};
-  bool _processing = false;
+  final Set<int> _processingIds = {}; // meal ids currently being refunded
 
   @override
   void initState() {
@@ -43,20 +42,22 @@ class _CreditRefundPageState extends State<CreditRefundPage>
     super.dispose();
   }
 
+  String get _todayDate {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _loadData() async {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        _service.getRefundableMeals(),
+        _service.getMealConfigByDate(_todayDate),
         _service.getRefundHistory(),
-        _service.getRefundSummary(),
       ]);
       if (mounted) {
         setState(() {
-          _pendingMeals = results[0] as List<RefundableMeal>;
+          _todayMeals = results[0] as List<MealConfig>;
           _historyMeals = results[1] as List<RefundableMeal>;
-          _summary = results[2] as RefundSummary;
-          _selectedIds.clear();
         });
       }
     } catch (_) {
@@ -66,45 +67,26 @@ class _CreditRefundPageState extends State<CreditRefundPage>
     }
   }
 
-  void _toggleSelection(String id) {
-    setState(() {
-      if (_selectedIds.contains(id)) {
-        _selectedIds.remove(id);
-      } else {
-        _selectedIds.add(id);
-      }
-    });
-  }
+  Future<void> _refundMeal(MealConfig meal) async {
+    if (meal.id == null) return;
 
-  void _selectAll() {
-    setState(() {
-      if (_selectedIds.length == _pendingMeals.length) {
-        _selectedIds.clear();
-      } else {
-        _selectedIds
-          ..clear()
-          ..addAll(_pendingMeals.map((m) => m.id));
-      }
-    });
-  }
-
-  Future<void> _processSingleRefund(RefundableMeal meal) async {
     final confirmed = await _showRefundConfirmDialog(
       context,
       title: 'Confirm Refund',
       message:
-          'Refund ৳${meal.totalRefundAmount.toStringAsFixed(0)} to ${meal.tokensSold} students for '
-          '${meal.mealType == MealType.lunch ? "Lunch" : "Dinner"} on ${_formatDate(meal.date)}?',
+          'Refund all students who bought a ${meal.mealType == MealType.lunch ? "Lunch" : "Dinner"} '
+          'token for today (${_formatDate(meal.date)})?\n\n'
+          'Price per token: ৳${meal.price.toStringAsFixed(0)}',
     );
     if (confirmed != true || !mounted) return;
 
-    setState(() => _processing = true);
+    setState(() => _processingIds.add(meal.id!));
     try {
-      final success = await _service.processRefund(meal.id);
+      final success = await _service.processBulkRefund([meal.id.toString()]);
       if (!mounted) return;
       if (success) {
         _showSnackBar(
-          'Refund processed successfully for ${meal.tokensSold} students!',
+          '${meal.mealType == MealType.lunch ? "Lunch" : "Dinner"} refund processed successfully!',
           isSuccess: true,
         );
         await _loadData();
@@ -114,59 +96,8 @@ class _CreditRefundPageState extends State<CreditRefundPage>
     } catch (e) {
       if (mounted) _showSnackBar('Error: $e');
     } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted) setState(() => _processingIds.remove(meal.id!));
     }
-  }
-
-  Future<void> _processBulkRefund() async {
-    if (_selectedIds.isEmpty) return;
-
-    final selectedMeals =
-        _pendingMeals.where((m) => _selectedIds.contains(m.id)).toList();
-    final totalAmount =
-        selectedMeals.fold(0.0, (sum, m) => sum + m.totalRefundAmount);
-    final totalStudents =
-        selectedMeals.fold(0, (sum, m) => sum + m.tokensSold);
-
-    final confirmed = await _showRefundConfirmDialog(
-      context,
-      title: 'Confirm Bulk Refund',
-      message:
-          'Process ${_selectedIds.length} refund(s) totalling ৳${totalAmount.toStringAsFixed(0)} '
-          'for $totalStudents students?',
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _processing = true);
-    try {
-      final success =
-          await _service.processBulkRefund(_selectedIds.toList());
-      if (!mounted) return;
-      if (success) {
-        _showSnackBar(
-          'Bulk refund processed! ৳${totalAmount.toStringAsFixed(0)} refunded to $totalStudents students.',
-          isSuccess: true,
-        );
-        await _loadData();
-      } else {
-        _showSnackBar('Bulk refund failed. Please try again.');
-      }
-    } catch (e) {
-      if (mounted) _showSnackBar('Error: $e');
-    } finally {
-      if (mounted) setState(() => _processing = false);
-    }
-  }
-
-  void _showStudentList(RefundableMeal meal) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => _StudentListSheet(meal: meal),
-    );
   }
 
   void _showSnackBar(String message, {bool isSuccess = false}) {
@@ -207,8 +138,11 @@ class _CreditRefundPageState extends State<CreditRefundPage>
                 color: Colors.red.withAlpha(25),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.currency_exchange,
-                  color: Colors.red, size: 20),
+              child: const Icon(
+                Icons.currency_exchange,
+                color: Colors.red,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 10),
             Flexible(child: Text(title)),
@@ -222,9 +156,7 @@ class _CreditRefundPageState extends State<CreditRefundPage>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
             child: const Text('Confirm Refund'),
           ),
         ],
@@ -246,10 +178,10 @@ class _CreditRefundPageState extends State<CreditRefundPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.pending_actions, size: 18),
+                  const Icon(Icons.restaurant_menu, size: 18),
                   const SizedBox(width: 6),
-                  const Text('Pending'),
-                  if (_pendingMeals.isNotEmpty) ...[
+                  const Text("Today's Meals"),
+                  if (_todayMeals.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -257,11 +189,11 @@ class _CreditRefundPageState extends State<CreditRefundPage>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.blue,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        _pendingMeals.length.toString(),
+                        _todayMeals.length.toString(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -297,79 +229,223 @@ class _CreditRefundPageState extends State<CreditRefundPage>
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(
               controller: _tabController,
-              children: [
-                _buildPendingTab(theme),
-                _buildHistoryTab(theme),
-              ],
+              children: [_buildTodayMealsTab(theme), _buildHistoryTab(theme)],
             ),
-      // Floating action bar for bulk refund
-      bottomNavigationBar: _selectedIds.isNotEmpty
-          ? _buildBulkActionBar(theme)
-          : null,
     );
   }
 
-  // ── Pending tab ──
-  Widget _buildPendingTab(ThemeData theme) {
+  // ── Today's Meals tab ──
+  Widget _buildTodayMealsTab(ThemeData theme) {
     return RefreshIndicator(
       onRefresh: _loadData,
-      child: _pendingMeals.isEmpty
+      child: _todayMeals.isEmpty
           ? _buildEmptyState(
-              icon: Icons.check_circle_outline,
-              title: 'No Pending Refunds',
-              subtitle: 'All cancelled meal refunds have been processed.',
+              icon: Icons.restaurant_outlined,
+              title: 'No Meals Today',
+              subtitle: 'No meal configurations found for today.',
             )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // ── Summary cards ──
-                if (_summary != null) ...[
-                  _buildSummarySection(theme),
-                  const SizedBox(height: 16),
-                ],
-
-                // ── Select all header ──
-                Row(
-                  children: [
-                    Text(
-                      'Cancelled Meals',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                // Info banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade50, Colors.indigo.shade50],
                     ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: _selectAll,
-                      icon: Icon(
-                        _selectedIds.length == _pendingMeals.length
-                            ? Icons.deselect
-                            : Icons.select_all,
-                        size: 18,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.blue.withAlpha(40)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withAlpha(25),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline,
+                          color: Colors.blue,
+                          size: 22,
+                        ),
                       ),
-                      label: Text(
-                        _selectedIds.length == _pendingMeals.length
-                            ? 'Deselect All'
-                            : 'Select All',
-                        style: const TextStyle(fontSize: 13),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Today's Meals — ${_formatDate(_todayDate)}",
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Tap Refund to credit all token holders for that meal.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.blue.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
 
-                // ── Meal cards ──
-                ..._pendingMeals.map(
-                  (meal) => RefundMealCard(
-                    meal: meal,
-                    isSelected: _selectedIds.contains(meal.id),
-                    onToggleSelect: () => _toggleSelection(meal.id),
-                    onViewStudents: () => _showStudentList(meal),
-                    onRefund: () => _processSingleRefund(meal),
+                // Meal cards
+                ..._todayMeals.map((meal) => _buildTodayMealCard(theme, meal)),
+              ],
+            ),
+    );
+  }
+
+  // ── Today meal card ──
+  Widget _buildTodayMealCard(ThemeData theme, MealConfig meal) {
+    final isLunch = meal.mealType == MealType.lunch;
+    final mealColor = isLunch ? Colors.orange : Colors.indigo;
+    final isProcessing = meal.id != null && _processingIds.contains(meal.id!);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Meal icon
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: mealColor.withAlpha(25),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    isLunch
+                        ? Icons.wb_sunny_outlined
+                        : Icons.nightlight_outlined,
+                    color: mealColor,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isLunch ? 'Lunch' : 'Dinner',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: mealColor.withAlpha(30),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '৳${meal.price.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: mealColor,
+                              ),
+                            ),
+                          ),
+                          if (meal.purchaseDeadline != null) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.schedule,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              meal.purchaseDeadline!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (meal.menu.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          meal.menu,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+            // Refund button
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: isProcessing ? null : () => _refundMeal(meal),
+                icon: isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.currency_exchange, size: 18),
+                label: Text(
+                  isProcessing ? 'Processing...' : 'Refund All Buyers',
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showStudentList(RefundableMeal meal) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _StudentListSheet(meal: meal),
     );
   }
 
@@ -394,173 +470,6 @@ class _CreditRefundPageState extends State<CreditRefundPage>
                 ),
               ],
             ),
-    );
-  }
-
-  // ── Summary cards ──
-  Widget _buildSummarySection(ThemeData theme) {
-    final summary = _summary!;
-    return Column(
-      children: [
-        // Alert banner
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.red.shade50,
-                Colors.orange.shade50,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.red.withAlpha(40)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.warning_amber_rounded,
-                    color: Colors.red, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${summary.pendingCount} cancelled meal(s) need refunds',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red.shade800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '৳${summary.totalAmountPending.toStringAsFixed(0)} total pending amount',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.red.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Stats row
-        IntrinsicHeight(
-          child: Row(
-            children: [
-              Expanded(
-                child: _MiniStatCard(
-                  label: 'Pending',
-                  value: summary.pendingCount.toString(),
-                  icon: Icons.pending_actions,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MiniStatCard(
-                  label: 'Completed',
-                  value: summary.completedCount.toString(),
-                  icon: Icons.check_circle_outline,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MiniStatCard(
-                  label: 'Refunded',
-                  value: '৳${_compactNumber(summary.totalAmountRefunded)}',
-                  icon: Icons.currency_exchange,
-                  color: Colors.teal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Bottom bulk action bar ──
-  Widget _buildBulkActionBar(ThemeData theme) {
-    final selectedMeals =
-        _pendingMeals.where((m) => _selectedIds.contains(m.id)).toList();
-    final totalAmount =
-        selectedMeals.fold(0.0, (sum, m) => sum + m.totalRefundAmount);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_selectedIds.length} selected',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    'Total: ৳${totalAmount.toStringAsFixed(0)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.red.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: _processing ? null : _processBulkRefund,
-              icon: _processing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.currency_exchange, size: 18),
-              label: Text(_processing ? 'Processing...' : 'Refund All'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.shade600,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -589,10 +498,7 @@ class _CreditRefundPageState extends State<CreditRefundPage>
             const SizedBox(height: 6),
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
               textAlign: TextAlign.center,
             ),
           ],
@@ -605,68 +511,23 @@ class _CreditRefundPageState extends State<CreditRefundPage>
     try {
       final d = DateTime.parse(date);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${d.day} ${months[d.month - 1]} ${d.year}';
     } catch (_) {
       return date;
     }
-  }
-
-  String _compactNumber(double n) {
-    if (n >= 1000) {
-      return '${(n / 1000).toStringAsFixed(1)}k';
-    }
-    return n.toStringAsFixed(0);
-  }
-}
-
-// ─── Mini stat card used in the summary section ───
-
-class _MiniStatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _MiniStatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withAlpha(12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withAlpha(30)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -765,8 +626,7 @@ class _StudentListSheet extends StatelessWidget {
                         return Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: theme
-                                .colorScheme.surfaceContainerHighest
+                            color: theme.colorScheme.surfaceContainerHighest
                                 .withAlpha(80),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -793,18 +653,19 @@ class _StudentListSheet extends StatelessWidget {
                                   children: [
                                     Text(
                                       student.studentName,
-                                      style:
-                                          theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                     Text(
                                       'Roll: ${student.studentRoll}',
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: theme
-                                            .colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -832,8 +693,18 @@ class _StudentListSheet extends StatelessWidget {
     try {
       final d = DateTime.parse(date);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${d.day} ${months[d.month - 1]} ${d.year}';
     } catch (_) {
