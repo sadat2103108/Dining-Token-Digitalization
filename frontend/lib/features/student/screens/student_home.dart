@@ -8,8 +8,9 @@ import 'qr_screen.dart';
 
 class StudentHome extends StatefulWidget {
   final String token;
+  final int? userId;
 
-  const StudentHome({super.key, required this.token});
+  const StudentHome({super.key, required this.token, this.userId});
 
   @override
   State<StudentHome> createState() => _StudentHomeState();
@@ -23,7 +24,7 @@ class _StudentHomeState extends State<StudentHome> {
   @override
   void initState() {
     super.initState();
-    _apiService = StudentApiService(token: widget.token);
+    _apiService = StudentApiService(token: widget.token, userId: widget.userId);
     _screens = [
       DashboardScreen(apiService: _apiService),
       QrScreen(apiService: _apiService),

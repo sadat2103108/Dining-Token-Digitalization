@@ -28,6 +28,7 @@ class _DiningAppState extends State<DiningApp> {
   bool _isInitialized = false;
   String _token = '';
   String _userRole = '';
+  int? _userId;
 
   @override
   void initState() {
@@ -40,11 +41,13 @@ class _DiningAppState extends State<DiningApp> {
     final isLoggedIn = await ServiceLocator.tokenStorage.isLoggedIn();
     final token = await ServiceLocator.tokenStorage.getToken();
     final role = await ServiceLocator.tokenStorage.getRole();
+    final userId = await ServiceLocator.tokenStorage.getUserId();
 
     setState(() {
       _isLoggedIn = isLoggedIn;
       _token = token ?? '';
       _userRole = role ?? '';
+      _userId = userId;
       _isInitialized = true;
     });
   }
