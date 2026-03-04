@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/widgets/app_bar.dart';
 import '../services/student_api_service.dart';
 import 'dashboard_screen.dart';
 import 'marketplace_screen.dart';
@@ -34,6 +35,7 @@ class _StudentHomeState extends State<StudentHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const GlobalAppBar(title: 'Digital Dining System'),
       body: _screens[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,

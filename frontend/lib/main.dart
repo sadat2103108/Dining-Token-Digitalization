@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/service_locator.dart';
+import 'package:frontend/core/widgets/app_bar.dart';
 import 'package:frontend/features/auth/screens/login_page.dart';
 import 'package:frontend/features/meal_manager/screens/manager_dashboard.dart';
 import 'package:frontend/features/student/screens/student_home.dart';
@@ -67,12 +68,8 @@ class _DiningAppState extends State<DiningApp> {
     Widget homeScreen;
     if (!_isLoggedIn) {
       homeScreen = const LoginPage();
-    } else if (_userRole.toUpperCase() == 'MEAL_MANAGER' ||
-        _userRole.toUpperCase() == 'MANAGER') {
-      homeScreen = const ManagerDashboard();
     } else {
-      // Default to student home for 'STUDENT' or other roles
-      homeScreen = StudentHome(token: _token);
+      homeScreen = _buildHomeScreen();
     }
 
     return MaterialApp(
@@ -82,27 +79,21 @@ class _DiningAppState extends State<DiningApp> {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       home: homeScreen,
-      routes: {
-        '/login': (_) => const LoginPage(),
-        '/student-home': (_) => StudentHome(token: _token),
-        '/meal-manager-home': (_) => const ManagerDashboard(),
-        '/dining-manager-home': (_) =>
-            const _PlaceholderPage(title: 'Dining Manager'),
-      },
+      routes: {'/login': (_) => const LoginPage()},
     );
   }
-}
 
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-
-  const _PlaceholderPage({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title Home - Coming Soon')),
-    );
+  Widget _buildHomeScreen() {
+    if (_userRole.toUpperCase() == 'MEAL_MANAGER') {
+      return const ManagerDashboard();
+    } else if (_userRole.toUpperCase() == 'DINING_MANAGER') {
+      return Scaffold(
+        appBar: const GlobalAppBar(title: 'Dining Manager'),
+        body: const Center(child: Text('Dining Manager - Coming Soon')),
+      );
+    } else {
+      // Default to student home for 'STUDENT' or other roles
+      return StudentHome(token: _token);
+    }
   }
 }

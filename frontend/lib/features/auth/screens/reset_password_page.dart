@@ -3,6 +3,7 @@ import 'package:frontend/core/services/service_locator.dart';
 import 'package:frontend/core/widgets/app_primary_button.dart';
 import 'package:frontend/core/widgets/app_text_field.dart';
 import 'package:frontend/core/widgets/loading_overlay.dart';
+import 'package:frontend/features/auth/screens/login_page.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
@@ -79,7 +80,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       );
 
       // Navigate back to login
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (_) => false,
+      );
     } catch (e) {
       if (!mounted) return;
 

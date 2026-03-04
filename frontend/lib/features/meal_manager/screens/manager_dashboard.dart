@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/widgets/app_bar.dart';
 import '../services/meal_manager_service.dart';
 import '../widgets/meal_count_card.dart';
 import '../widgets/stat_card.dart';
@@ -56,38 +57,10 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final pages = [
-      _buildDashboardBody(theme),
-      const HistoryPage(),
-    ];
+    final pages = [_buildDashboardBody(theme), const HistoryPage()];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dining Management',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              _currentIndex == 0 ? 'Meal Manager Dashboard' : 'History',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loadDashboard,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
+      appBar: const GlobalAppBar(title: 'Meal Manager'),
       body: pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
@@ -148,8 +121,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
             ),
             child: Row(
               children: [
-                Icon(Icons.today,
-                    size: 18, color: theme.colorScheme.primary),
+                Icon(Icons.today, size: 18, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   _formattedDate(),
@@ -299,12 +271,27 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
 
   String _formattedDate() {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-      'Saturday', 'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     final now = DateTime.now();
     return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
