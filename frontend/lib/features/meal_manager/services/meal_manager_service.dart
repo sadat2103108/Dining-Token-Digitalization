@@ -521,8 +521,8 @@ class DashboardData {
       dinnerRevenue: (json['dinnerRevenue'] as num?)?.toDouble() ?? 0.0,
       totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
       todayTopUps: (json['todayTopUps'] as num?)?.toInt() ?? 0,
-      isLunchAvailable: json['isLunchAvailable'] as bool? ?? true,
-      isDinnerAvailable: json['isDinnerAvailable'] as bool? ?? true,
+      isLunchAvailable: json['lunchAvailable'] as bool? ?? true,
+      isDinnerAvailable: json['dinnerAvailable'] as bool? ?? true,
     );
   }
 }

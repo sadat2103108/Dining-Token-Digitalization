@@ -1311,30 +1311,9 @@ class _SellerProfileDialogState extends State<_SellerProfileDialog> {
   }
 
   Future<void> _fetchProfile() async {
-    // TODO: Uncomment when backend is ready
-    // setState(() {
-    //   _isLoading = true;
-    //   _errorMessage = null;
-    // });
-    //
-    // try {
-    //   final profile =
-    //       await widget.apiService.getSellerProfile(widget.post.studentId);
-    //   if (!mounted) return;
-    //   setState(() {
-    //     _profile = profile;
-    //     _isLoading = false;
-    //   });
-    // } catch (_) {
-    //   if (!mounted) return;
-    //   setState(() {
-    //     _isLoading = false;
-    //     _errorMessage = null;
-    //     _profile = null;
-    //   });
-    // }
-
-    // --- Dummy: skip API, use post data directly ---
+    // No backend endpoint exists for fetching another student's profile.
+    // Show only the data available from the marketplace post.
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
       _profile = null;

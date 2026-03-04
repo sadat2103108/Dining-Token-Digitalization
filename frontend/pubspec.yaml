@@ -46,6 +46,9 @@ dependencies:
   equatable: ^2.0.5
   qr_flutter: ^4.1.0
 
+  # QR scanning (camera + web fallback)
+  mobile_scanner: ^6.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
