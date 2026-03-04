@@ -27,6 +27,7 @@ class _DiningAppState extends State<DiningApp> {
   bool _isInitialized = false;
   String _token = '';
   String _userRole = '';
+  int? _userId;
 
   @override
   void initState() {
@@ -39,11 +40,13 @@ class _DiningAppState extends State<DiningApp> {
     final isLoggedIn = await ServiceLocator.tokenStorage.isLoggedIn();
     final token = await ServiceLocator.tokenStorage.getToken();
     final role = await ServiceLocator.tokenStorage.getRole();
+    final userId = await ServiceLocator.tokenStorage.getUserId();
 
     setState(() {
       _isLoggedIn = isLoggedIn;
       _token = token ?? '';
       _userRole = role ?? '';
+      _userId = userId;
       _isInitialized = true;
     });
   }
@@ -72,7 +75,7 @@ class _DiningAppState extends State<DiningApp> {
       homeScreen = const ManagerDashboard();
     } else {
       // Default to student home for 'STUDENT' or other roles
-      homeScreen = StudentHome(token: _token);
+      homeScreen = StudentHome(token: _token, userId: _userId);
     }
 
     return MaterialApp(
@@ -84,7 +87,7 @@ class _DiningAppState extends State<DiningApp> {
       home: homeScreen,
       routes: {
         '/login': (_) => const LoginPage(),
-        '/student-home': (_) => StudentHome(token: _token),
+        '/student-home': (_) => StudentHome(token: _token, userId: _userId),
         '/meal-manager-home': (_) => const ManagerDashboard(),
         '/dining-manager-home': (_) =>
             const _PlaceholderPage(title: 'Dining Manager'),

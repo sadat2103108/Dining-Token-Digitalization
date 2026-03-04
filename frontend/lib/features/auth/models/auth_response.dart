@@ -6,7 +6,8 @@ class AuthResponse extends Equatable {
   final String role;
   final String name;
   final int userId;
-  final int hallId;
+  final int? hallId;
+  final String? hallName;
   final String? roll;
   final String? phoneNo;
   final String? roomNo;
@@ -17,7 +18,8 @@ class AuthResponse extends Equatable {
     required this.role,
     required this.name,
     required this.userId,
-    required this.hallId,
+    this.hallId,
+    this.hallName,
     this.roll,
     this.phoneNo,
     this.roomNo,
@@ -30,7 +32,8 @@ class AuthResponse extends Equatable {
       role: json['role'] as String,
       name: json['name'] as String,
       userId: json['userId'] as int,
-      hallId: json['hallId'] as int,
+      hallId: json['hallId'] as int?,
+      hallName: json['hallName'] as String?,
       roll: json['roll'] as String?,
       phoneNo: json['phoneNo'] as String?,
       roomNo: json['roomNo'] as String?,
@@ -45,6 +48,7 @@ class AuthResponse extends Equatable {
       'name': name,
       'userId': userId,
       'hallId': hallId,
+      'hallName': hallName,
       'roll': roll,
       'phoneNo': phoneNo,
       'roomNo': roomNo,
@@ -59,6 +63,7 @@ class AuthResponse extends Equatable {
     name,
     userId,
     hallId,
+    hallName,
     roll,
     phoneNo,
     roomNo,

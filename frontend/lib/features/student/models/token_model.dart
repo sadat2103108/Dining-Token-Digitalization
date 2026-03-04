@@ -57,6 +57,7 @@ class TokenModel {
   final String status;
   final int price;
   final bool isValid;
+  final String? menu; // Backend returns menu as a string
 
   const TokenModel({
     required this.id,
@@ -67,18 +68,20 @@ class TokenModel {
     required this.status,
     required this.price,
     this.isValid = false,
+    this.menu,
   });
 
   factory TokenModel.fromJson(Map<String, dynamic> json) => TokenModel(
         id: json['id'].toString(),
         tokenType: json['mealType'] as String? ?? json['tokenType'] as String? ?? '',
         date: json['mealDate']?.toString() ?? json['date'] as String? ?? '',
-        hall: json['hall'] as String? ?? '',
-        time: json['time'] as String? ?? '',
+        hall: json['ownerName'] as String? ?? json['hall'] as String? ?? '',
+        time: json['createdAt']?.toString() ?? json['time'] as String? ?? '',
         status: json['status'] as String? ?? '',
         price: (json['price'] as num?)?.toInt() ?? 0,
         isValid: (json['status'] as String?)?.toUpperCase() == 'AVAILABLE' ||
             (json['status'] as String?)?.toUpperCase() == 'ACTIVE',
+        menu: json['menu'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -89,6 +92,7 @@ class TokenModel {
         'time': time,
         'status': status,
         'price': price,
+        'menu': menu,
       };
 
   /// Parsed status enum.
@@ -103,6 +107,7 @@ class TokenModel {
     String? status,
     int? price,
     bool? isValid,
+    String? menu,
   }) =>
       TokenModel(
         id: id ?? this.id,
@@ -113,6 +118,7 @@ class TokenModel {
         status: status ?? this.status,
         price: price ?? this.price,
         isValid: isValid ?? this.isValid,
+        menu: menu ?? this.menu,
       );
 
   @override
@@ -235,6 +241,16 @@ class MyToken {
         date: json['date'] as String,
         price: json['price'] as int,
         status: json['status'] as String,
+      );
+
+  /// Create from backend marketplace TokenResponse (common DTO).
+  /// Backend fields: { id, mealId, mealType, mealDate, menu, price, status }
+  factory MyToken.fromTokenResponse(Map<String, dynamic> json) => MyToken(
+        tokenId: json['id'].toString(),
+        mealType: json['mealType'] as String? ?? '',
+        date: json['mealDate']?.toString() ?? '',
+        price: (json['price'] as num?)?.toInt() ?? 0,
+        status: json['status'] as String? ?? '',
       );
 
   Map<String, dynamic> toJson() => {
