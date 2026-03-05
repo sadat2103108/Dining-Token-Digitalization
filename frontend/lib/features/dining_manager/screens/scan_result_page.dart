@@ -29,57 +29,66 @@ class ScanResultPage extends StatelessWidget {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              // Large status icon
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.1),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const Spacer(flex: 2),
+                      // Large status icon
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.1),
+                        ),
+                        child: Icon(icon, size: 80, color: color),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        isValid ? 'Valid Token' : 'Invalid Token',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        result.message,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 28),
+                      // Details card
+                      _DetailsCard(result: result),
+                      const Spacer(flex: 3),
+                      // Scan Another button
+                      FilledButton.icon(
+                        onPressed: onScanAnother,
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        label: const Text('Scan Another'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1565C0),
+                          minimumSize: const Size(double.infinity, 52),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
-                child: Icon(icon, size: 80, color: color),
               ),
-              const SizedBox(height: 20),
-              Text(
-                isValid ? 'Valid Token' : 'Invalid Token',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                result.message,
-                textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.grey[700]),
-              ),
-              const SizedBox(height: 28),
-              // Details card
-              _DetailsCard(result: result),
-              const Spacer(flex: 3),
-              // Scan Another button
-              FilledButton.icon(
-                onPressed: onScanAnother,
-                icon: const Icon(Icons.qr_code_scanner_rounded),
-                label: const Text('Scan Another'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

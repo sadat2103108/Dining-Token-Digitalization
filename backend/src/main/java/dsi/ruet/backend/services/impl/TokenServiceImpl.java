@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -95,10 +97,17 @@ public class TokenServiceImpl implements TokenService {
 
     /* ==================== 2. View My Tokens ==================== */
 
+    /**
+     * Returns only AVAILABLE (not yet used) tokens for the student panel.
+     * Used tokens are excluded so they no longer appear in the student's view.
+     */
     @Override
     public List<TokenResponse> getMyTokens(User currentUser) {
         List<Token> tokens = tokenRepository.findByOwnerOrderByCreatedAtDesc(currentUser);
-        return tokens.stream().map(this::mapToTokenResponse).collect(Collectors.toList());
+        return tokens.stream()
+                .filter(t -> t.getStatus() == TokenStatus.AVAILABLE)
+                .map(this::mapToTokenResponse)
+                .collect(Collectors.toList());
     }
 
     /* ==================== 3. Generate QR Code ==================== */
@@ -134,7 +143,16 @@ public class TokenServiceImpl implements TokenService {
 
     /* ==================== 5. Validate QR Code ==================== */
 
+    /**
+     * Validates a scanned QR code.
+     * Rules:
+     *   - Token must have been bought the previous day (meal date = today).
+     *   - LUNCH tokens are only valid from 12:01 PM to 3:00 PM.
+     *   - DINNER tokens are only valid from 7:00 PM to 10:00 PM.
+     *   - On successful validation the token is automatically marked as USED.
+     */
     @Override
+    @Transactional
     public QrValidationResponse validateQr(ValidateQrRequest request) {
         String qrData = request.getQrData();
 
@@ -182,9 +200,12 @@ public class TokenServiceImpl implements TokenService {
                     .build();
         }
 
-        // Check correct meal date (token should be for today's meal)
         Meal meal = token.getMeal();
-        if (!meal.getMealDate().equals(java.time.LocalDate.now())) {
+        LocalDate today = LocalDate.now();
+        LocalTime currentTime = LocalTime.now();
+
+        // Token must be for today's meal (i.e. bought the previous day for today)
+        if (!meal.getMealDate().equals(today)) {
             return QrValidationResponse.builder()
                     .valid(false)
                     .tokenId(token.getId())
@@ -196,15 +217,53 @@ public class TokenServiceImpl implements TokenService {
                     .build();
         }
 
-        // Token is valid
+        // Enforce meal-type serving windows
+        // LUNCH  : 12:01 PM – 3:00 PM
+        // DINNER : 7:00 PM  – 10:00 PM
+        if (meal.getMealType() == dsi.ruet.backend.models.enums.MealType.LUNCH) {
+            LocalTime lunchStart = LocalTime.of(12, 1);   // 12:01 PM
+            LocalTime lunchEnd   = LocalTime.of(15, 0);   // 3:00 PM
+            if (currentTime.isBefore(lunchStart) || currentTime.isAfter(lunchEnd)) {
+                return QrValidationResponse.builder()
+                        .valid(false)
+                        .tokenId(token.getId())
+                        .ownerName(token.getOwner().getName())
+                        .mealType(meal.getMealType().name())
+                        .mealDate(meal.getMealDate())
+                        .status(token.getStatus().name())
+                        .message("Lunch tokens can only be used between 12:01 PM and 3:00 PM.")
+                        .build();
+            }
+        } else if (meal.getMealType() == dsi.ruet.backend.models.enums.MealType.DINNER) {
+            LocalTime dinnerStart = LocalTime.of(19, 0);  // 7:00 PM
+            LocalTime dinnerEnd   = LocalTime.of(22, 0);  // 10:00 PM
+            if (currentTime.isBefore(dinnerStart) || currentTime.isAfter(dinnerEnd)) {
+                return QrValidationResponse.builder()
+                        .valid(false)
+                        .tokenId(token.getId())
+                        .ownerName(token.getOwner().getName())
+                        .mealType(meal.getMealType().name())
+                        .mealDate(meal.getMealDate())
+                        .status(token.getStatus().name())
+                        .message("Dinner tokens can only be used between 7:00 PM and 10:00 PM.")
+                        .build();
+            }
+        }
+
+        // ---- Validation passed — automatically mark the token as USED ----
+        token.setStatus(TokenStatus.USED);
+        token.setUsedAt(LocalDateTime.now());
+        tokenRepository.save(token);
+
+        // Token is valid and has been consumed
         return QrValidationResponse.builder()
                 .valid(true)
                 .tokenId(token.getId())
                 .ownerName(token.getOwner().getName())
                 .mealType(meal.getMealType().name())
                 .mealDate(meal.getMealDate())
-                .status(token.getStatus().name())
-                .message("Token is valid. Ready to serve.")
+                .status(TokenStatus.USED.name())
+                .message("Token is valid. Meal served — token has been used.")
                 .build();
     }
 

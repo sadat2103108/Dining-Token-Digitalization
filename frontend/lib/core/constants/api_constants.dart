@@ -10,6 +10,7 @@ class ApiConstants {
   static const String sendOtpEndpoint = '/auth/send-otp';
   static const String verifyOtpEndpoint = '/auth/verify-otp';
   static const String getCurrentUserEndpoint = '/auth/me';
+  static const String checkRoleEndpoint = '/auth/check-role';
 
   // TODO: These endpoints need to be implemented in the backend
   static const String sendResetOtpEndpoint =

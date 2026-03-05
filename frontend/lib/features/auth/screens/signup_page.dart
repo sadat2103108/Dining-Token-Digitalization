@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/service_locator.dart';
 import 'package:frontend/core/widgets/app_text_field.dart';
@@ -24,6 +25,9 @@ class _SignupPageState extends State<SignupPage> {
 
   bool _isLoading = false;
   bool _agreeToTerms = false;
+  bool _isDiningManager = false;
+  bool _isCheckingRole = false;
+  Timer? _emailDebounce;
 
   @override
   void initState() {
@@ -36,10 +40,48 @@ class _SignupPageState extends State<SignupPage> {
     _rollController = TextEditingController();
     _phoneController = TextEditingController();
     _roomController = TextEditingController();
+
+    // Listen to email changes and check role on the fly
+    _emailController.addListener(_onEmailChanged);
+  }
+
+  /// Debounced email check — fires 600ms after the user stops typing
+  void _onEmailChanged() {
+    _emailDebounce?.cancel();
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      if (_isDiningManager) {
+        setState(() => _isDiningManager = false);
+      }
+      return;
+    }
+    _emailDebounce = Timer(const Duration(milliseconds: 600), () {
+      _checkRoleForEmail(email);
+    });
+  }
+
+  Future<void> _checkRoleForEmail(String email) async {
+    setState(() => _isCheckingRole = true);
+    try {
+      final role = await ServiceLocator.authService.checkRole(email);
+      if (!mounted) return;
+      setState(() {
+        _isDiningManager = role == 'DINING_MANAGER';
+        _isCheckingRole = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isDiningManager = false;
+        _isCheckingRole = false;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _emailDebounce?.cancel();
+    _emailController.removeListener(_onEmailChanged);
     _emailController.dispose();
     _nameController.dispose();
     _passwordController.dispose();
@@ -93,6 +135,7 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   String? _validateRoll(String? value) {
+    if (_isDiningManager) return null; // Not required for dining managers
     if (value == null || value.isEmpty) {
       return 'Roll number is required';
     }
@@ -107,6 +150,7 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   String? _validateRoom(String? value) {
+    if (_isDiningManager) return null; // Not required for dining managers
     if (value == null || value.isEmpty) {
       return 'Room number is required';
     }
@@ -231,7 +275,9 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Create your student account to access meal services',
+                          _isDiningManager
+                              ? 'Create your dining manager account'
+                              : 'Create your student account to access meal services',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
@@ -262,6 +308,28 @@ class _SignupPageState extends State<SignupPage> {
                                   color: scheme.primary,
                                 ),
                               ),
+
+                              // Role indicator
+                              if (_isCheckingRole)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: Text('Checking account...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                )
+                              else if (_isDiningManager)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.verified_user, size: 16, color: scheme.primary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Dining Manager account detected',
+                                        style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
                               const SizedBox(height: 16),
 
                               // Name field
@@ -305,28 +373,30 @@ class _SignupPageState extends State<SignupPage> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Student Information
-                              Text(
-                                'Student Information',
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(color: scheme.onSurface),
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Roll Number field
-                              AppTextField(
-                                label: 'Roll Number',
-                                hint: 'e.g., 21-1234',
-                                controller: _rollController,
-                                validator: _validateRoll,
-                                prefixIcon: Icon(
-                                  Icons.badge_outlined,
-                                  color: scheme.primary,
+                              // Student Information (hidden for dining managers)
+                              if (!_isDiningManager) ...[
+                                Text(
+                                  'Student Information',
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(color: scheme.onSurface),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
+                                const SizedBox(height: 12),
 
-                              // Phone Number field
+                                // Roll Number field
+                                AppTextField(
+                                  label: 'Roll Number',
+                                  hint: 'e.g., 21-1234',
+                                  controller: _rollController,
+                                  validator: _validateRoll,
+                                  prefixIcon: Icon(
+                                    Icons.badge_outlined,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              // Phone Number field (always shown)
                               AppTextField(
                                 label: 'Phone Number',
                                 hint: '+880XXXXXXXXX',
@@ -340,19 +410,24 @@ class _SignupPageState extends State<SignupPage> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Room Number field
-                              AppTextField(
-                                label: 'Room Number',
-                                hint: '101',
-                                controller: _roomController,
-                                keyboardType: TextInputType.number,
-                                validator: _validateRoom,
-                                prefixIcon: Icon(
-                                  Icons.door_sliding_outlined,
-                                  color: scheme.primary,
+                              // Room Number field (hidden for dining managers)
+                              if (!_isDiningManager) ...[
+                                AppTextField(
+                                  label: 'Room Number',
+                                  hint: '101',
+                                  controller: _roomController,
+                                  keyboardType: TextInputType.number,
+                                  validator: _validateRoom,
+                                  prefixIcon: Icon(
+                                    Icons.door_sliding_outlined,
+                                    color: scheme.primary,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 24),
+                                const SizedBox(height: 24),
+                              ],
+
+                              if (_isDiningManager)
+                                const SizedBox(height: 24),
 
                               // Terms checkbox
                               Row(

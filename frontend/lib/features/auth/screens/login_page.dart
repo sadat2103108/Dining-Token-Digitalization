@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/features/dining_manager/screens/scanner_page.dart';
 import 'package:frontend/features/meal_manager/screens/manager_dashboard.dart';
 import 'package:frontend/features/student/screens/student_home.dart';
 import 'package:frontend/core/services/service_locator.dart';
 import 'package:frontend/core/widgets/app_primary_button.dart';
 import 'package:frontend/core/widgets/app_text_field.dart';
-import 'package:frontend/core/widgets/app_bar.dart';
 import 'package:frontend/core/widgets/loading_overlay.dart';
 import 'package:frontend/features/auth/screens/forgot_password_page.dart';
 import 'package:frontend/features/auth/screens/signup_page.dart';
@@ -120,10 +120,7 @@ class _LoginPageState extends State<LoginPage> {
         screen = const ManagerDashboard();
         break;
       case 'DINING_MANAGER':
-        screen = Scaffold(
-          appBar: const GlobalAppBar(title: 'Dining Manager'),
-          body: const Center(child: Text('Dining Manager - Coming Soon')),
-        );
+        screen = const ScannerPage();
         break;
       default:
         screen = StudentHome(token: token, userId: userId);

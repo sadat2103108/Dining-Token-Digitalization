@@ -203,6 +203,26 @@ class AuthService {
     return _tokenStorage.getRole();
   }
 
+  /// Check the role of a pre-registered user by email.
+  /// Used during signup to decide whether to show student-specific fields.
+  /// Returns the role string (e.g. 'STUDENT', 'DINING_MANAGER') or null if not found.
+  Future<String?> checkRole(String email) async {
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.checkRoleEndpoint,
+        queryParameters: {'email': email},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        // Backend returns ApiResponse<String> with role in 'data' field
+        return response.data!['data'] as String?;
+      }
+      return null;
+    } on DioException {
+      return null;
+    }
+  }
+
   /// Handle DioException and return user-friendly error
   String _handleDioException(DioException error) {
     return ApiClient.getErrorMessage(error);

@@ -127,6 +127,22 @@ public class AuthenticationController {
      * 
      * Assumption: Frontend only calls this when email is verified via OTP
      */
+    /**
+     * Check role endpoint (used during signup to determine form fields)
+     * Returns the role of a pre-registered user by email.
+     * This is a public endpoint so the frontend can check on the fly
+     * whether to show student-specific fields (roll, room).
+     */
+    @GetMapping("/check-role")
+    public ResponseEntity<ApiResponse<String>> checkRole(@RequestParam String email) {
+        try {
+            String role = authenticationService.checkRole(email);
+            return new ResponseEntity<>(new ApiResponse<>("Role retrieved successfully", role), HttpStatus.OK);
+        } catch (ResourceNotFoundException e) {
+            return new ResponseEntity<>(new ApiResponse<>(e.getMessage(), null), HttpStatus.NOT_FOUND);
+        }
+    }
+
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody ResetPasswordRequest request) {
         try {

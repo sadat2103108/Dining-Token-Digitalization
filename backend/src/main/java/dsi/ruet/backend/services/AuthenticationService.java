@@ -397,6 +397,17 @@ public class AuthenticationService {
      * @param request ResetPasswordRequest with email, newPassword, confirmPassword
      * @return ApiResponse indicating success/failure
      */
+    /**
+     * Returns the role of a pre-registered user by email.
+     * Used by the frontend during signup to decide which form fields to show.
+     */
+    public String checkRole(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Email not found. Please contact administrator to create your account."));
+        return user.getRole().name();
+    }
+
     @Transactional
     public ApiResponse<String> resetPassword(ResetPasswordRequest request) {
         // Validate passwords match

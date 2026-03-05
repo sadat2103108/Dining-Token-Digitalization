@@ -66,7 +66,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/auth/signup", "/auth/login","/auth/send-otp","/auth/verify-otp","/auth/reset-password").permitAll()
+                        .requestMatchers("/auth/signup", "/auth/login","/auth/send-otp","/auth/verify-otp","/auth/reset-password","/auth/check-role").permitAll()
                         .requestMatchers("/admin/**").permitAll()
                         .requestMatchers("/auth/**").authenticated()
                         .anyRequest().authenticated()

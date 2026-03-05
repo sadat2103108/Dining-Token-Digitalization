@@ -1,11 +1,10 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:frontend/core/services/service_locator.dart';
+import 'package:frontend/features/auth/screens/login_page.dart';
 import 'package:frontend/features/dining_manager/services/dining_service.dart';
 import 'package:frontend/features/dining_manager/screens/scan_result_page.dart';
-import 'package:frontend/features/dining_manager/screens/stats_page.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
@@ -18,11 +17,8 @@ class _ScannerPageState extends State<ScannerPage> {
   late final DiningService _diningService;
   late final MobileScannerController _scannerController;
 
-  final TextEditingController _manualQrController = TextEditingController();
-
   bool _isProcessing = false;
   bool _showScanner = false;
-  bool _cameraFailed = false;
 
   @override
   void initState() {
@@ -37,23 +33,36 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   void dispose() {
     _scannerController.dispose();
-    _manualQrController.dispose();
     super.dispose();
   }
 
   // ─── Actions ──────────────────────────────────────────
 
-  void _openScanner() {
-    if (kIsWeb) {
-      // On web, camera may or may not work — try it,
-      // but _cameraFailed flag provides fallback.
-      setState(() => _showScanner = true);
-    } else {
-      setState(() {
-        _showScanner = true;
-        _cameraFailed = false;
-      });
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed ?? false) {
+      await ServiceLocator.tokenStorage.clearAll();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
+  }
+
+  void _openScanner() {
+    setState(() => _showScanner = true);
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -67,14 +76,6 @@ class _ScannerPageState extends State<ScannerPage> {
     await _processQr(barcode.rawValue!);
   }
 
-  Future<void> _onManualSubmit() async {
-    final text = _manualQrController.text.trim();
-    if (text.isEmpty || _isProcessing) return;
-
-    setState(() => _isProcessing = true);
-    await _processQr(text);
-  }
-
   Future<void> _processQr(String qrData) async {
     final result = await _diningService.validateQr(qrData);
     if (!mounted) return;
@@ -83,8 +84,6 @@ class _ScannerPageState extends State<ScannerPage> {
       _isProcessing = false;
       _showScanner = false;
     });
-
-    _manualQrController.clear();
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -100,10 +99,10 @@ class _ScannerPageState extends State<ScannerPage> {
 
   void _onScannerError(MobileScannerException error) {
     if (!mounted) return;
-    setState(() {
-      _cameraFailed = true;
-      _showScanner = false;
-    });
+    setState(() => _showScanner = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Camera error. Please try again.')),
+    );
   }
 
   // ─── UI ───────────────────────────────────────────────
@@ -112,18 +111,15 @@ class _ScannerPageState extends State<ScannerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RUET Dining Manager'),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF1565C0),
+        title: const Text('Dining Manager'),
+        elevation: 2,
+        backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
-        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.bar_chart_rounded),
-            tooltip: 'Today\'s Stats',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const StatsPage()),
-            ),
+            icon: const Icon(Icons.logout),
+            onPressed: () => _handleLogout(context),
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -151,7 +147,7 @@ class _ScannerPageState extends State<ScannerPage> {
         const Spacer(flex: 2),
         // Circular scan button
         GestureDetector(
-          onTap: _cameraFailed || kIsWeb ? null : _openScanner,
+          onTap: _openScanner,
           child: Container(
             width: 200,
             height: 200,
@@ -177,7 +173,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  _cameraFailed ? 'Camera\nUnavailable' : 'Scan QR\nCode',
+                  'Scan QR\nCode',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.95),
@@ -192,89 +188,15 @@ class _ScannerPageState extends State<ScannerPage> {
         ),
         const SizedBox(height: 32),
         Text(
-          _cameraFailed
-              ? 'Camera unavailable — use manual entry below'
-              : 'Place the QR code in the frame to scan',
+          'Tap to scan student QR code',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.7),
             fontSize: 14,
           ),
         ),
-        const Spacer(flex: 1),
-        // Manual QR entry (always visible on web, shown on camera fail)
-        if (kIsWeb || _cameraFailed) _buildManualEntry(),
-        if (!kIsWeb && !_cameraFailed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: TextButton.icon(
-              onPressed: () => setState(() => _cameraFailed = true),
-              icon: const Icon(Icons.keyboard_rounded, color: Colors.white70),
-              label: const Text('Enter QR manually',
-                  style: TextStyle(color: Colors.white70)),
-            ),
-          ),
-        const SizedBox(height: 16),
+        const Spacer(flex: 3),
       ],
-    );
-  }
-
-  Widget _buildManualEntry() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _manualQrController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Paste QR payload',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-            onSubmitted: (_) => _onManualSubmit(),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isProcessing ? null : _onManualSubmit,
-              icon: _isProcessing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.verified_rounded),
-              label: Text(_isProcessing ? 'Verifying…' : 'Verify'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF1565C0),
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // On web: also offer camera scan if possible
-          if (kIsWeb && !_cameraFailed)
-            TextButton.icon(
-              onPressed: _openScanner,
-              icon: const Icon(Icons.camera_alt_rounded, color: Colors.white70),
-              label: const Text('Try camera scan',
-                  style: TextStyle(color: Colors.white70)),
-            ),
-        ],
-      ),
     );
   }
 

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/service_locator.dart';
-import 'package:frontend/core/widgets/app_bar.dart';
 import 'package:frontend/features/auth/screens/login_page.dart';
 import 'package:frontend/features/meal_manager/screens/manager_dashboard.dart';
 import 'package:frontend/features/student/screens/student_home.dart';
 import 'core/theme/app_theme.dart';
+// import 'features/home/screens/dining_manager_home_page.dart';
+import 'features/dining_manager/screens/scanner_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,10 +91,7 @@ class _DiningAppState extends State<DiningApp> {
     if (_userRole.toUpperCase() == 'MEAL_MANAGER') {
       return const ManagerDashboard();
     } else if (_userRole.toUpperCase() == 'DINING_MANAGER') {
-      return Scaffold(
-        appBar: const GlobalAppBar(title: 'Dining Manager'),
-        body: const Center(child: Text('Dining Manager - Coming Soon')),
-      );
+      return const ScannerPage();
     } else {
       // Default to student home for 'STUDENT' or other roles
       return StudentHome(token: _token, userId: _userId);
