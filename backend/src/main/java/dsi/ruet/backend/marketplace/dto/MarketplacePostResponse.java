@@ -15,6 +15,10 @@ public class MarketplacePostResponse {
     private Long mealPrice;
     private Long sellerId;
     private String sellerName;
+    private String sellerRoll;
+    private String sellerPhone;
+    private String sellerHall;
+    private String sellerRoom;
     private Long buyerId;
     private String buyerName;
     private String status;

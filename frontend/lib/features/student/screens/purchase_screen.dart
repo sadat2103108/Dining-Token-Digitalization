@@ -46,6 +46,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   accentColor: t.tokenType == 'Lunch'
                       ? Colors.orange
                       : Colors.deepPurple,
+                  date: t.date,
+                  purchaseEndTime: t.purchaseEndTime,
                 ))
             .toList();
         _isLoading = false;
@@ -95,7 +97,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Purchase Token'),
+        title: const Text('Buy Tomorrow\'s Token'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -124,9 +126,30 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 )
               : _meals.isEmpty
                   ? Center(
-                      child: Text(
-                        'No tokens available for purchase',
-                        style: theme.textTheme.bodyLarge,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.no_meals_outlined,
+                                size: 48,
+                                color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No tokens available right now',
+                              style: theme.textTheme.titleMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tomorrow\'s meal tokens can only be purchased during the window set by the dining manager.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : RefreshIndicator(
@@ -143,6 +166,22 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     );
   }
 
+  String _formatMealDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      final weekday = weekdays[date.weekday - 1];
+      final month = months[date.month - 1];
+      return '$weekday, $month ${date.day}'; // e.g. "Fri, Mar 6"
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   Widget _buildMealCard(ThemeData theme, MealOption meal) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -155,6 +194,43 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Meal date banner
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today,
+                      size: 14, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Tomorrow — ${_formatMealDate(meal.date)}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  if (meal.purchaseEndTime != null) ...[
+                    const Spacer(),
+                    Icon(Icons.timer_outlined,
+                        size: 14, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Ends ${meal.purchaseEndTime}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
             // Header row
             Row(
               children: [
@@ -168,23 +244,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        meal.mealType,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        meal.time,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    meal.mealType,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Container(

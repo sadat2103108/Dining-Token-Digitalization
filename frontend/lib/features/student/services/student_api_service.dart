@@ -179,6 +179,8 @@ class StudentApiService {
             price: price,
             time: time,
             menu: menuItems.isEmpty ? ['No menu available'] : menuItems,
+            date: (e['date'] as String?) ?? '',
+            purchaseEndTime: e['purchaseEndTime'] as String?,
           );
         }).toList();
       } else {

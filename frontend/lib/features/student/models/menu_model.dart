@@ -55,6 +55,8 @@ class MealOption {
   final List<String> menu;
   final IconData icon;
   final Color accentColor;
+  final String date; // meal date (YYYY-MM-DD)
+  final String? purchaseEndTime; // deadline to purchase
 
   const MealOption({
     required this.mealId,
@@ -64,6 +66,8 @@ class MealOption {
     required this.menu,
     required this.icon,
     required this.accentColor,
+    required this.date,
+    this.purchaseEndTime,
   });
 
   factory MealOption.fromJson(Map<String, dynamic> json) => MealOption(
@@ -77,10 +81,12 @@ class MealOption {
             : Icons.nightlight_outlined,
         accentColor:
             json['mealType'] == 'Lunch' ? Colors.orange : Colors.deepPurple,
+        date: json['date'] as String? ?? '',
+        purchaseEndTime: json['purchaseEndTime'] as String?,
       );
 
   /// Create from a [MenuModel] with a price.
-  factory MealOption.fromMenuModel(MenuModel menu, {required int mealId, required int price}) =>
+  factory MealOption.fromMenuModel(MenuModel menu, {required int mealId, required int price, String date = '', String? purchaseEndTime}) =>
       MealOption(
         mealId: mealId,
         mealType: menu.mealType,
@@ -92,6 +98,8 @@ class MealOption {
             : Icons.nightlight_outlined,
         accentColor:
             menu.mealType == 'Lunch' ? Colors.orange : Colors.deepPurple,
+        date: date,
+        purchaseEndTime: purchaseEndTime,
       );
 
   @override

@@ -1290,136 +1290,89 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SELLER PROFILE DIALOG (fetches from API)
+// SELLER PROFILE DIALOG (uses data from marketplace post)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SellerProfileDialog extends StatefulWidget {
+class _SellerProfileDialog extends StatelessWidget {
   final StudentApiService apiService;
   final MarketplacePost post;
 
   const _SellerProfileDialog({required this.apiService, required this.post});
 
   @override
-  State<_SellerProfileDialog> createState() => _SellerProfileDialogState();
-}
-
-class _SellerProfileDialogState extends State<_SellerProfileDialog> {
-  bool _isLoading = true;
-  String? _errorMessage;
-  StudentProfile? _profile;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchProfile();
-  }
-
-  Future<void> _fetchProfile() async {
-    // No backend endpoint exists for fetching another student's profile.
-    // Show only the data available from the marketplace post.
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _profile = null;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final post = widget.post;
 
-    // Use API data if available, fallback to post data
-    final name = _profile?.name ?? post.sellerName;
-    final studentId = _profile?.roll ?? '';
-    final mobile = _profile?.phoneNo ?? '';
-    final hallName = _profile?.hallName ?? '';
-    final roomNo = _profile?.roomNo ?? 'N/A';
+    final name = post.sellerName;
+    final studentId = post.sellerRoll ?? 'N/A';
+    final mobile = post.sellerPhone ?? 'N/A';
+    final hallName = post.sellerHall ?? 'N/A';
+    final roomNo = post.sellerRoom ?? 'N/A';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: _isLoading
-            ? const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(height: 24),
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading profile...'),
-                  SizedBox(height: 24),
-                ],
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: Colors.blue.withOpacity(0.2),
-                    child: Text(
-                      name.isNotEmpty ? name[0] : '?',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 28,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  _profileRow(
-                    theme,
-                    Icons.badge_outlined,
-                    'Student ID',
-                    studentId,
-                  ),
-                  const SizedBox(height: 10),
-                  _profileRow(theme, Icons.phone_outlined, 'Mobile', mobile),
-                  const SizedBox(height: 10),
-                  _profileRow(
-                    theme,
-                    Icons.apartment_outlined,
-                    'Hall Name',
-                    hallName,
-                  ),
-                  const SizedBox(height: 10),
-                  _profileRow(
-                    theme,
-                    Icons.door_front_door_outlined,
-                    'Room No',
-                    roomNo,
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.blue.withOpacity(0.2),
+              child: Text(
+                name.isNotEmpty ? name[0] : '?',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 28,
+                  color: Colors.blue,
+                ),
               ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              name,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _profileRow(
+              theme,
+              Icons.badge_outlined,
+              'Student ID',
+              studentId,
+            ),
+            const SizedBox(height: 10),
+            _profileRow(theme, Icons.phone_outlined, 'Mobile', mobile),
+            const SizedBox(height: 10),
+            _profileRow(
+              theme,
+              Icons.apartment_outlined,
+              'Hall Name',
+              hallName,
+            ),
+            const SizedBox(height: 10),
+            _profileRow(
+              theme,
+              Icons.door_front_door_outlined,
+              'Room No',
+              roomNo,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

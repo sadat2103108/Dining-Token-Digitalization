@@ -29,6 +29,7 @@ public class MarketplaceService {
     private final TokenTransactionRepository tokenTransactionRepository;
     private final WalletRepository walletRepository;
     private final CoinTransactionRepository coinTransactionRepository;
+    private final StudentInfoRepository studentInfoRepository;
 
     private static final int PENDING_TIMEOUT_MINUTES = 15;
 
@@ -501,6 +502,32 @@ public class MarketplaceService {
 
     private MarketplacePostResponse toResponse(MarketplacePost post) {
         Token token = post.getToken();
+        User seller = post.getSeller();
+
+        // Fetch seller details
+        String sellerRoll = null;
+        String sellerPhone = null;
+        String sellerRoom = null;
+        try {
+            StudentInfo sellerInfo = studentInfoRepository.findById(seller.getId()).orElse(null);
+            if (sellerInfo != null) {
+                sellerRoll = sellerInfo.getRoll();
+                sellerPhone = sellerInfo.getPhoneNo();
+                sellerRoom = sellerInfo.getRoomNo();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch seller info for user {}: {}", seller.getId(), e.getMessage());
+        }
+
+        String sellerHall = null;
+        try {
+            if (seller.getHall() != null) {
+                sellerHall = seller.getHall().getName();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch seller hall for user {}: {}", seller.getId(), e.getMessage());
+        }
+
         return MarketplacePostResponse.builder()
                 .id(post.getId())
                 .tokenId(token.getId())
@@ -508,8 +535,12 @@ public class MarketplaceService {
                 .mealDate(token.getMeal().getMealDate().toString())
                 .mealMenu(token.getMeal().getMenu())
                 .mealPrice(token.getMeal().getPrice().longValue())
-                .sellerId(post.getSeller().getId())
-                .sellerName(post.getSeller().getName())
+                .sellerId(seller.getId())
+                .sellerName(seller.getName())
+                .sellerRoll(sellerRoll)
+                .sellerPhone(sellerPhone)
+                .sellerHall(sellerHall)
+                .sellerRoom(sellerRoom)
                 .buyerId(post.getBuyer() != null ? post.getBuyer().getId() : null)
                 .buyerName(post.getBuyer() != null ? post.getBuyer().getName() : null)
                 .status(post.getStatus().name())

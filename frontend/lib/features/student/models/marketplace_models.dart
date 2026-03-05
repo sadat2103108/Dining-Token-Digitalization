@@ -11,6 +11,10 @@ class MarketplacePost {
   final String? mealMenu;
   final int mealPrice;
   final int? sellerId;
+  final String? sellerRoll;
+  final String? sellerPhone;
+  final String? sellerHall;
+  final String? sellerRoom;
   final int? buyerId;
   final String? buyerName;
   final String status;
@@ -26,6 +30,10 @@ class MarketplacePost {
     this.mealMenu,
     required this.mealPrice,
     this.sellerId,
+    this.sellerRoll,
+    this.sellerPhone,
+    this.sellerHall,
+    this.sellerRoom,
     this.buyerId,
     this.buyerName,
     required this.status,
@@ -43,6 +51,10 @@ class MarketplacePost {
         mealMenu: json['mealMenu'] as String?,
         mealPrice: (json['mealPrice'] as num?)?.toInt() ?? 0,
         sellerId: json['sellerId'] as int?,
+        sellerRoll: json['sellerRoll'] as String?,
+        sellerPhone: json['sellerPhone'] as String?,
+        sellerHall: json['sellerHall'] as String?,
+        sellerRoom: json['sellerRoom'] as String?,
         buyerId: json['buyerId'] as int?,
         buyerName: json['buyerName'] as String?,
         status: json['status'] as String? ?? '',
@@ -59,6 +71,10 @@ class MarketplacePost {
         'mealMenu': mealMenu,
         'mealPrice': mealPrice,
         'sellerId': sellerId,
+        'sellerRoll': sellerRoll,
+        'sellerPhone': sellerPhone,
+        'sellerHall': sellerHall,
+        'sellerRoom': sellerRoom,
         'buyerId': buyerId,
         'buyerName': buyerName,
         'status': status,
@@ -82,6 +98,10 @@ class MarketplacePost {
     String? mealMenu,
     int? mealPrice,
     int? sellerId,
+    String? sellerRoll,
+    String? sellerPhone,
+    String? sellerHall,
+    String? sellerRoom,
     int? buyerId,
     String? buyerName,
     String? status,
@@ -97,6 +117,10 @@ class MarketplacePost {
         mealMenu: mealMenu ?? this.mealMenu,
         mealPrice: mealPrice ?? this.mealPrice,
         sellerId: sellerId ?? this.sellerId,
+        sellerRoll: sellerRoll ?? this.sellerRoll,
+        sellerPhone: sellerPhone ?? this.sellerPhone,
+        sellerHall: sellerHall ?? this.sellerHall,
+        sellerRoom: sellerRoom ?? this.sellerRoom,
         buyerId: buyerId ?? this.buyerId,
         buyerName: buyerName ?? this.buyerName,
         status: status ?? this.status,

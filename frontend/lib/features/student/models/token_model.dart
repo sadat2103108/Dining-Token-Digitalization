@@ -304,6 +304,8 @@ class AvailableToken {
   final int price;
   final String time;
   final List<String> menu;
+  final String date; // meal date (YYYY-MM-DD)
+  final String? purchaseEndTime; // deadline to purchase
 
   const AvailableToken({
     required this.mealId,
@@ -311,6 +313,8 @@ class AvailableToken {
     required this.price,
     required this.time,
     required this.menu,
+    required this.date,
+    this.purchaseEndTime,
   });
 
   factory AvailableToken.fromJson(Map<String, dynamic> json) => AvailableToken(
@@ -319,6 +323,8 @@ class AvailableToken {
         price: json['price'] as int,
         time: json['time'] as String,
         menu: List<String>.from(json['menu'] as List),
+        date: json['date'] as String? ?? '',
+        purchaseEndTime: json['purchaseEndTime'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -327,6 +333,8 @@ class AvailableToken {
         'price': price,
         'time': time,
         'menu': menu,
+        'date': date,
+        'purchaseEndTime': purchaseEndTime,
       };
 
   @override
