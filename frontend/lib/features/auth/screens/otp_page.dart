@@ -278,58 +278,75 @@ class _OtpPageState extends State<OtpPage> {
                         child: Column(
                           children: [
                             // OTP boxes
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: List.generate(
-                                6,
-                                (index) => SizedBox(
-                                  width: 50,
-                                  child: TextField(
-                                    controller: _otpControllers[index],
-                                    focusNode: _otpFocusNodes[index],
-                                    textAlign: TextAlign.center,
-                                    keyboardType: TextInputType.number,
-                                    maxLength: 1,
-                                    inputFormatters: [],
-                                    onChanged: (value) {
-                                      if (value.isNotEmpty) {
-                                        _focusNextField(index);
-                                      }
-                                    },
-                                    onSubmitted: (value) {
-                                      if (value.isEmpty) {
-                                        _focusPreviousField(index);
-                                      }
-                                    },
-                                    decoration: InputDecoration(
-                                      counterText: '',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: scheme.outlineVariant,
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: scheme.outlineVariant,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: scheme.primary,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      filled: true,
-                                      fillColor: scheme.surfaceContainer,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: List.generate(
+                                  6,
+                                  (index) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
                                     ),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                    child: SizedBox(
+                                      width: 50,
+                                      child: TextField(
+                                        controller: _otpControllers[index],
+                                        focusNode: _otpFocusNodes[index],
+                                        textAlign: TextAlign.center,
+                                        keyboardType: TextInputType.number,
+                                        maxLength: 1,
+                                        inputFormatters: [],
+                                        onChanged: (value) {
+                                          if (value.isNotEmpty) {
+                                            _focusNextField(index);
+                                          }
+                                        },
+                                        onSubmitted: (value) {
+                                          if (value.isEmpty) {
+                                            _focusPreviousField(index);
+                                          }
+                                        },
+                                        decoration: InputDecoration(
+                                          counterText: '',
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: scheme.outlineVariant,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: scheme.outlineVariant,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: scheme.primary,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          filled: true,
+                                          fillColor: scheme.surfaceContainer,
+                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),

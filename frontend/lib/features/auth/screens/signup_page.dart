@@ -313,18 +313,34 @@ class _SignupPageState extends State<SignupPage> {
                               if (_isCheckingRole)
                                 const Padding(
                                   padding: EdgeInsets.only(top: 4),
-                                  child: Text('Checking account...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  child: Text(
+                                    'Checking account...',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                 )
                               else if (_isDiningManager)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.verified_user, size: 16, color: scheme.primary),
+                                      Icon(
+                                        Icons.verified_user,
+                                        size: 16,
+                                        color: scheme.primary,
+                                      ),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        'Dining Manager account detected',
-                                        style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600),
+                                      Flexible(
+                                        child: Text(
+                                          'Dining Manager account detected',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: scheme.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -426,8 +442,7 @@ class _SignupPageState extends State<SignupPage> {
                                 const SizedBox(height: 24),
                               ],
 
-                              if (_isDiningManager)
-                                const SizedBox(height: 24),
+                              if (_isDiningManager) const SizedBox(height: 24),
 
                               // Terms checkbox
                               Row(
