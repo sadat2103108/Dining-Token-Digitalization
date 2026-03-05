@@ -6,14 +6,12 @@ import dsi.ruet.backend.exception.ResourceNotFoundException;
 import dsi.ruet.backend.models.*;
 import dsi.ruet.backend.models.enums.MealType;
 import dsi.ruet.backend.models.enums.Role;
-import dsi.ruet.backend.models.enums.TokenStatus;
 import dsi.ruet.backend.models.enums.TransactionType;
 import dsi.ruet.backend.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,10 +24,9 @@ import java.util.stream.Collectors;
  * Covers:
  *  - Wallet top-up & balance lookup
  *  - Meal configuration (create / update / get)
- *  - Meal availability (get / update with refund)
- *  - Reports (sales, revenue, wallet top-ups)
+ *  - Reports (sales, wallet top-ups)
  *  - Dashboard aggregation
- *  - History (meal history, credit history)
+ *  - History (credit history)
  */
 @Service
 public class MealManagerService {
@@ -71,7 +68,7 @@ public class MealManagerService {
     @Transactional
     public ApiResponse<StudentBalanceResponse> topUpWallet(TopUpRequest request, Long managerId) {
         // Validate amount
-        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        if (request.getAmount() == null || request.getAmount() <= 0) {
             throw new IllegalArgumentException("Top-up amount must be positive");
         }
 
@@ -83,12 +80,17 @@ public class MealManagerService {
                         "Student not found with roll: " + request.getStudentId()));
         User student = studentInfo.getUser();
 
+        // Prevent manager from topping up their own wallet
+        if (manager.getId().equals(student.getId())) {
+            throw new IllegalArgumentException("You cannot top up your own wallet");
+        }
+
         // Ensure manager and student belong to the same hall
         verifySameHall(manager, student);
 
         // Credit the student's wallet
         Wallet wallet = getOrCreateWallet(student);
-        wallet.setBalance(wallet.getBalance().add(request.getAmount()));
+        wallet.setBalance(wallet.getBalance() + request.getAmount());
         wallet = walletRepository.save(wallet);
 
         // Record coin transaction: manager → student
@@ -145,7 +147,7 @@ public class MealManagerService {
                     tx.getId().toString(),
                     roll,
                     receiverName,
-                    BigDecimal.valueOf(tx.getAmount()),
+                    tx.getAmount(),
                     tx.getCreatedAt()
             );
         }).toList();
@@ -251,44 +253,6 @@ public class MealManagerService {
         return new ApiResponse<>("Meal configs for " + dateStr, configs);
     }
 
-    // ==================== MEAL CANCELLATION ====================
-
-    /**
-     * POST /api/v1/meals/config/{id}/cancel
-     * Cancel a meal and auto-refund all students who purchased tokens.
-     * Steps:
-     *   1. Validate the meal belongs to the manager's hall and is not already closed
-     *   2. Close the meal (isClosed = true)
-     *   3. Refund all non-USED token holders their wallet balance
-     *   4. Delete the refunded tokens
-     *   5. Mark refundedAt timestamp
-     */
-    @Transactional
-    public ApiResponse<Void> cancelMeal(Long mealId, Long managerId) {
-        User manager = findUserById(managerId);
-        Meal meal = findMealById(mealId);
-
-        // Validate: meal must belong to manager's hall
-        if (!meal.getHall().getId().equals(manager.getHall().getId())) {
-            throw new IllegalArgumentException("This meal does not belong to your hall");
-        }
-        // Validate: meal must not already be closed/cancelled
-        if (Boolean.TRUE.equals(meal.getIsClosed())) {
-            throw new IllegalArgumentException("This meal is already cancelled");
-        }
-
-        // Close meal and refund all active token holders
-        int refundCount = closeMealAndRefund(meal, manager);
-
-        // Mark as refunded
-        meal.setRefundedAt(LocalDateTime.now());
-        mealRepository.save(meal);
-
-        String mealLabel = meal.getMealType().name() + " on " + meal.getMealDate().format(DATE_FMT);
-        return new ApiResponse<>(
-                "Meal cancelled: " + mealLabel + ". " + refundCount + " token(s) refunded.", null);
-    }
-
     // ==================== REPORTS ====================
 
     /**
@@ -317,33 +281,7 @@ public class MealManagerService {
         return new ApiResponse<>("Sales report for " + dateStr, resp);
     }
 
-    /**
-     * GET /api/v1/reports/revenue?date=YYYY-MM-DD
-     * Returns lunch/dinner revenue on the given date.
-     * Revenue = token count × meal price.
-     */
-    public ApiResponse<RevenueReportResponse> getRevenueReport(String dateStr, Long managerId) {
-        User manager = findUserById(managerId);
-        LocalDate date = LocalDate.parse(dateStr, DATE_FMT);
 
-        List<Meal> meals = mealRepository.findByHallIdAndMealDate(manager.getHall().getId(), date);
-
-        double lunchRevenue = 0;
-        double dinnerRevenue = 0;
-
-        for (Meal meal : meals) {
-            long count = tokenRepository.countByMealId(meal.getId());
-            double revenue = meal.getPrice().multiply(java.math.BigDecimal.valueOf(count)).doubleValue();
-            if (meal.getMealType() == MealType.LUNCH) {
-                lunchRevenue = revenue;
-            } else if (meal.getMealType() == MealType.DINNER) {
-                dinnerRevenue = revenue;
-            }
-        }
-
-        RevenueReportResponse resp = new RevenueReportResponse(lunchRevenue, dinnerRevenue);
-        return new ApiResponse<>("Revenue report for " + dateStr, resp);
-    }
 
     /**
      * GET /api/v1/reports/wallet-topups?date=YYYY-MM-DD
@@ -360,21 +298,19 @@ public class MealManagerService {
     /**
      * GET /api/v1/dashboard
      * Returns aggregated dashboard data for today:
-     *  - lunch/dinner token counts and revenue
+     *  - lunch/dinner token counts
      *  - total students in hall
      *  - today's top-up count
      *  - meal availability status
      */
     public ApiResponse<DashboardResponse> getDashboardData(Long managerId) {
         User manager = findUserById(managerId);
-        LocalDate today = LocalDate.now();
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
 
-        List<Meal> meals = mealRepository.findByHallIdAndMealDate(manager.getHall().getId(), today);
+        List<Meal> meals = mealRepository.findByHallIdAndMealDate(manager.getHall().getId(), tomorrow);
 
         int lunchCount = 0;
         int dinnerCount = 0;
-        double lunchRevenue = 0;
-        double dinnerRevenue = 0;
         boolean lunchAvailable = false;
         boolean dinnerAvailable = false;
 
@@ -382,11 +318,9 @@ public class MealManagerService {
             long count = tokenRepository.countByMealId(meal.getId());
             if (meal.getMealType() == MealType.LUNCH) {
                 lunchCount = (int) count;
-                lunchRevenue = count * meal.getPrice().doubleValue();
                 lunchAvailable = !Boolean.TRUE.equals(meal.getIsClosed());
             } else if (meal.getMealType() == MealType.DINNER) {
                 dinnerCount = (int) count;
-                dinnerRevenue = count * meal.getPrice().doubleValue();
                 dinnerAvailable = !Boolean.TRUE.equals(meal.getIsClosed());
             }
         }
@@ -395,6 +329,7 @@ public class MealManagerService {
         int totalStudents = (int) userRepository.countByHallIdAndRole(manager.getHall().getId(), Role.STUDENT);
 
         // Today's top-up count
+        LocalDate today = LocalDate.now();
         LocalDateTime dayStart = today.atStartOfDay();
         LocalDateTime dayEnd = today.plusDays(1).atStartOfDay();
         int todayTopUps = (int) coinTransactionRepository.countTopUpsBySenderAndDay(
@@ -402,7 +337,6 @@ public class MealManagerService {
 
         DashboardResponse resp = new DashboardResponse(
                 lunchCount, dinnerCount,
-                lunchRevenue, dinnerRevenue,
                 totalStudents, todayTopUps,
                 lunchAvailable, dinnerAvailable
         );
@@ -410,54 +344,6 @@ public class MealManagerService {
     }
 
     // ==================== HISTORY ====================
-
-    /**
-     * GET /api/v1/history/meals
-     * Returns daily meal history (last 30 days) showing token counts and prices.
-     */
-    public ApiResponse<List<DailyMealHistoryResponse>> getMealHistory(Long managerId) {
-        User manager = findUserById(managerId);
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(30);
-
-        List<Meal> meals = mealRepository.findByHallIdAndMealDateBetweenOrderByMealDateDesc(
-                manager.getHall().getId(), startDate, endDate);
-
-        // Group meals by date
-        Map<LocalDate, List<Meal>> mealsByDate = meals.stream()
-                .collect(Collectors.groupingBy(Meal::getMealDate,
-                        LinkedHashMap::new, Collectors.toList()));
-
-        List<DailyMealHistoryResponse> history = new ArrayList<>();
-        for (Map.Entry<LocalDate, List<Meal>> entry : mealsByDate.entrySet()) {
-            LocalDate date = entry.getKey();
-            List<Meal> dayMeals = entry.getValue();
-
-            int lunchCount = 0;
-            int dinnerCount = 0;
-            double lunchPrice = 0;
-            double dinnerPrice = 0;
-
-            for (Meal meal : dayMeals) {
-                long count = tokenRepository.countByMealId(meal.getId());
-                if (meal.getMealType() == MealType.LUNCH) {
-                    lunchCount = (int) count;
-                    lunchPrice = meal.getPrice().doubleValue();
-                } else if (meal.getMealType() == MealType.DINNER) {
-                    dinnerCount = (int) count;
-                    dinnerPrice = meal.getPrice().doubleValue();
-                }
-            }
-
-            history.add(new DailyMealHistoryResponse(
-                    date.format(DISPLAY_DATE_FMT),
-                    lunchCount, dinnerCount,
-                    lunchPrice, dinnerPrice
-            ));
-        }
-
-        return new ApiResponse<>("Meal history (last 30 days)", history);
-    }
 
     /**
      * GET /api/v1/history/credits
@@ -549,17 +435,17 @@ public class MealManagerService {
         return walletRepository.findByUserId(user.getId()).orElseGet(() -> {
             Wallet w = new Wallet();
             w.setUser(user);
-            w.setBalance(BigDecimal.ZERO);
+            w.setBalance(0L);
             return walletRepository.save(w);
         });
     }
 
     /** Record a coin transaction between two users */
-    private void recordCoinTransaction(User sender, User receiver, BigDecimal amount, String typeStr) {
+    private void recordCoinTransaction(User sender, User receiver, Long amount, String typeStr) {
         CoinTransaction tx = new CoinTransaction();
         tx.setSender(sender);
         tx.setReceiver(receiver);
-        tx.setAmount(amount.longValue());
+        tx.setAmount(amount);
         TransactionType type;
         switch (typeStr.toUpperCase()) {
             case "TOPUP":
@@ -598,39 +484,9 @@ public class MealManagerService {
                 deadline,
                 startTime,
                 endTime,
-                Boolean.TRUE.equals(meal.getIsClosed())
+                Boolean.TRUE.equals(meal.getIsClosed()),
+                (int) tokenRepository.countByMealId(meal.getId())
         );
     }
 
-    /**
-     * Close a meal and refund all ACTIVE token holders.
-     * Returns the number of tokens refunded.
-     */
-    private int closeMealAndRefund(Meal meal, User manager) {
-        List<Token> tokens = tokenRepository.findByMealId(meal.getId());
-        int refundCount = 0;
-
-        for (Token token : tokens) {
-            if (token.getStatus() != TokenStatus.USED) {
-                // Refund the token price to the student's wallet
-                BigDecimal refundAmount = meal.getPrice();
-                Wallet wallet = getOrCreateWallet(token.getOwner());
-                wallet.setBalance(wallet.getBalance().add(refundAmount));
-                walletRepository.save(wallet);
-
-                // Record refund as REFUND coin transaction: manager → student
-                recordCoinTransaction(manager, token.getOwner(), refundAmount, "REFUND");
-
-                // Delete the token
-                tokenRepository.delete(token);
-                refundCount++;
-            }
-        }
-
-        // Mark meal as closed
-        meal.setIsClosed(true);
-        mealRepository.save(meal);
-
-        return refundCount;
-    }
 }

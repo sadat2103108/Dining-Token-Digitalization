@@ -86,7 +86,7 @@ class StudentApiService {
           // Response is wrapped in ApiResponse: { "message": "...", "data": { "balance": ... } }
           final data = body['data'] as Map<String, dynamic>? ?? body;
 
-          final balance = (data['balance'] as num?)?.toDouble() ?? 0.0;
+          final balance = (data['balance'] as num?)?.toInt() ?? 0;
           return WalletModel(balance: balance);
         } catch (e) {
           print('Error parsing wallet response: $e, body: ${res.body}');

@@ -1,33 +1,3 @@
-/// Aggregated meal history for a single day.
-class DailyMealHistory {
-  final String date;
-  final int lunchCount;
-  final int dinnerCount;
-  final double lunchPrice;
-  final double dinnerPrice;
-
-  const DailyMealHistory({
-    required this.date,
-    required this.lunchCount,
-    required this.dinnerCount,
-    required this.lunchPrice,
-    required this.dinnerPrice,
-  });
-
-  int get totalMeals => lunchCount + dinnerCount;
-  double get totalRevenue => (lunchCount * lunchPrice) + (dinnerCount * dinnerPrice);
-
-  factory DailyMealHistory.fromJson(Map<String, dynamic> json) {
-    return DailyMealHistory(
-      date: json['date'] as String,
-      lunchCount: json['lunchCount'] as int,
-      dinnerCount: json['dinnerCount'] as int,
-      lunchPrice: (json['lunchPrice'] as num).toDouble(),
-      dinnerPrice: (json['dinnerPrice'] as num).toDouble(),
-    );
-  }
-}
-
 /// Aggregated credit history for a single day.
 class DailyCreditHistory {
   final String date;
@@ -49,8 +19,8 @@ class DailyCreditHistory {
     );
   }
 
-  double get totalAmount =>
-      transactions.fold(0.0, (sum, t) => sum + t.amount);
+  int get totalAmount =>
+      transactions.fold(0, (sum, t) => sum + t.amount);
 
   int get transactionCount => transactions.length;
 }
@@ -59,7 +29,7 @@ class CreditTransactionSummary {
   final String id;
   final String studentId;
   final String studentName;
-  final double amount;
+  final int amount;
   final String time;
 
   const CreditTransactionSummary({
@@ -75,7 +45,7 @@ class CreditTransactionSummary {
       id: json['id'].toString(),
       studentId: json['studentId'] as String,
       studentName: json['studentName'] as String,
-      amount: (json['amount'] as num).toDouble(),
+      amount: (json['amount'] as num).toInt(),
       time: json['time'] as String,
     );
   }

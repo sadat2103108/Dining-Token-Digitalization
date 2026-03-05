@@ -2,7 +2,6 @@ package dsi.ruet.backend.services;
 
 import dsi.ruet.backend.dto.ApiResponse;
 import dsi.ruet.backend.dto.manager.SalesReportResponse;
-import dsi.ruet.backend.dto.manager.SalesSummaryResponse;
 import dsi.ruet.backend.dto.manager.WalletTopupReportResponse;
 import dsi.ruet.backend.exception.ResourceNotFoundException;
 import dsi.ruet.backend.models.CoinTransaction;
@@ -16,7 +15,6 @@ import dsi.ruet.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -52,17 +50,17 @@ public class ReportService {
 
         List<SalesReportResponse.MealSalesDetail> details = new ArrayList<>();
         long totalTokens = 0;
-        BigDecimal totalRevenue = BigDecimal.ZERO;
+        long totalRevenue = 0L;
 
         for (Meal meal : meals) {
             long sold = tokenRepository.countByMealId(meal.getId());
             long used = tokenRepository.countByMealIdAndStatus(meal.getId(), TokenStatus.USED);
             long active = tokenRepository.countByMealIdAndStatus(meal.getId(), TokenStatus.AVAILABLE);
-            BigDecimal price = meal.getPrice();
-            BigDecimal revenue = price.multiply(BigDecimal.valueOf(sold));
+            Long price = meal.getPrice();
+            long revenue = price * sold;
 
             totalTokens += sold;
-            totalRevenue = totalRevenue.add(revenue);
+            totalRevenue += revenue;
 
             SalesReportResponse.MealSalesDetail detail = new SalesReportResponse.MealSalesDetail();
             detail.setMealId(meal.getId());
@@ -111,14 +109,14 @@ public class ReportService {
         LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
 
         List<CoinTransaction> topups = List.of();
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        Long totalAmount = 0L;
 
         if (!hallUserIds.isEmpty()) {
             topups = coinTransactionRepository.findTopUpsByReceiverIdsAndDate(
                     hallUserIds, startOfDay, endOfDay);
             Long sumResult = coinTransactionRepository.sumTopUpsByReceiverIdsAndDate(
                     hallUserIds, startOfDay, endOfDay);
-            totalAmount = sumResult != null ? BigDecimal.valueOf(sumResult) : BigDecimal.ZERO;
+            totalAmount = sumResult != null ? sumResult : 0L;
         }
 
         List<WalletTopupReportResponse.TopupDetail> topupDetails = new ArrayList<>();
@@ -127,7 +125,7 @@ public class ReportService {
             detail.setTransactionId(tx.getId());
             detail.setSenderId(tx.getSender() != null ? tx.getSender().getId() : null);
             detail.setReceiverId(tx.getReceiver() != null ? tx.getReceiver().getId() : null);
-            detail.setAmount(BigDecimal.valueOf(tx.getAmount()));
+            detail.setAmount(tx.getAmount());
             detail.setCreatedAt(tx.getCreatedAt());
 
             Long receiverId = tx.getReceiver() != null ? tx.getReceiver().getId() : null;
@@ -147,75 +145,6 @@ public class ReportService {
         response.setTopups(topupDetails);
 
         return new ApiResponse<>("Wallet top-up report for " + dateStr, response);
-    }
-
-    /**
-     * GET /reports/sales-summary — Get sales summary for today and tomorrow
-     */
-    public ApiResponse<SalesSummaryResponse> getSalesSummary(String email) {
-        User manager = getManager(email);
-        Long hallId = manager.getHall().getId();
-
-        LocalDate today = LocalDate.now();
-        LocalDate tomorrow = today.plusDays(1);
-
-        SalesSummaryResponse response = new SalesSummaryResponse();
-        response.setHallId(hallId);
-        response.setTodayDate(today.toString());
-        response.setTomorrowDate(tomorrow.toString());
-
-        // --- Today's stats ---
-        List<Meal> todayMeals = mealRepository.findByHallIdAndMealDate(hallId, today);
-        long todayLunch = 0, todayDinner = 0;
-        BigDecimal todayRevenue = BigDecimal.ZERO;
-
-        for (Meal meal : todayMeals) {
-            long count = tokenRepository.countByMealId(meal.getId());
-            BigDecimal mealRevenue = meal.getPrice().multiply(BigDecimal.valueOf(count));
-            todayRevenue = todayRevenue.add(mealRevenue);
-
-            if ("LUNCH".equals(meal.getMealType().name())) {
-                todayLunch = count;
-            } else if ("DINNER".equals(meal.getMealType().name())) {
-                todayDinner = count;
-            }
-        }
-        response.setTodayLunchTokensSold(todayLunch);
-        response.setTodayDinnerTokensSold(todayDinner);
-        response.setTodayRevenue(todayRevenue);
-
-        // --- Tomorrow's stats ---
-        List<Meal> tomorrowMeals = mealRepository.findByHallIdAndMealDate(hallId, tomorrow);
-        long tomorrowLunch = 0, tomorrowDinner = 0;
-        BigDecimal tomorrowRevenue = BigDecimal.ZERO;
-        List<SalesSummaryResponse.MealConfigSummary> configs = new ArrayList<>();
-
-        for (Meal meal : tomorrowMeals) {
-            long count = tokenRepository.countByMealId(meal.getId());
-            BigDecimal mealRevenue = meal.getPrice().multiply(BigDecimal.valueOf(count));
-            tomorrowRevenue = tomorrowRevenue.add(mealRevenue);
-
-            if ("LUNCH".equals(meal.getMealType().name())) {
-                tomorrowLunch = count;
-            } else if ("DINNER".equals(meal.getMealType().name())) {
-                tomorrowDinner = count;
-            }
-
-            SalesSummaryResponse.MealConfigSummary config = new SalesSummaryResponse.MealConfigSummary();
-            config.setMealId(meal.getId());
-            config.setMealType(meal.getMealType().name());
-            config.setMenu(meal.getMenu());
-            config.setPrice(meal.getPrice());
-            config.setPurchaseDeadline(meal.getPurchaseDeadline() != null ? meal.getPurchaseDeadline().toString() : null);
-            config.setTokensSold(count);
-            configs.add(config);
-        }
-        response.setTomorrowLunchTokensSold(tomorrowLunch);
-        response.setTomorrowDinnerTokensSold(tomorrowDinner);
-        response.setTomorrowRevenue(tomorrowRevenue);
-        response.setTomorrowMealConfigs(configs);
-
-        return new ApiResponse<>("Sales summary retrieved successfully", response);
     }
 
     private User getManager(String email) {

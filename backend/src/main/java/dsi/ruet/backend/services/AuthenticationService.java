@@ -139,7 +139,7 @@ public class AuthenticationService {
         // Create a wallet for this user with 0 balance
         Wallet wallet = new Wallet();
         wallet.setUser(user);
-        wallet.setBalance(java.math.BigDecimal.ZERO);
+        wallet.setBalance(0L);
         walletRepository.save(wallet);
 
         // Return signup success response

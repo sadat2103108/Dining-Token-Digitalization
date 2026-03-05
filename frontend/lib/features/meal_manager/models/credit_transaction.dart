@@ -3,7 +3,7 @@ class CreditTransaction {
   final String id;
   final String studentId;
   final String studentName;
-  final double amount;
+  final int amount;
   final DateTime timestamp;
 
   const CreditTransaction({
@@ -19,7 +19,7 @@ class CreditTransaction {
       id: json['id'].toString(),
       studentId: json['studentId'] as String,
       studentName: json['studentName'] as String,
-      amount: (json['amount'] as num).toDouble(),
+      amount: (json['amount'] as num).toInt(),
       timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }

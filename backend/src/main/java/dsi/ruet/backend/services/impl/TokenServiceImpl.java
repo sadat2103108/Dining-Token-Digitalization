@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -34,9 +33,6 @@ public class TokenServiceImpl implements TokenService {
     private WalletRepository walletRepository;
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
     private TokenTransactionRepository tokenTransactionRepository;
 
     /* ==================== 1. Purchase Token ==================== */
@@ -48,8 +44,11 @@ public class TokenServiceImpl implements TokenService {
         Meal meal = mealRepository.findById(request.getMealId())
                 .orElseThrow(() -> new ResourceNotFoundException("Meal not found with ID: " + request.getMealId()));
 
-        // 2. Check purchase deadline
-        if (LocalDateTime.now().isAfter(meal.getPurchaseDeadline())) {
+        // 2. Check purchase deadline (use purchaseEndTime as fallback)
+        LocalDateTime deadline = meal.getPurchaseDeadline() != null
+                ? meal.getPurchaseDeadline()
+                : meal.getPurchaseEndTime();
+        if (deadline != null && LocalDateTime.now().isAfter(deadline)) {
             throw new IllegalStateException("Purchase deadline has passed for this meal.");
         }
 
@@ -62,7 +61,7 @@ public class TokenServiceImpl implements TokenService {
         Wallet wallet = walletRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found. Please contact admin."));
 
-        if (wallet.getBalance().compareTo(meal.getPrice()) < 0) {
+        if (wallet.getBalance() < meal.getPrice()) {
             throw new IllegalStateException("Insufficient wallet balance. Required: " + meal.getPrice()
                     + ", Available: " + wallet.getBalance());
         }
@@ -102,23 +101,7 @@ public class TokenServiceImpl implements TokenService {
         return tokens.stream().map(this::mapToTokenResponse).collect(Collectors.toList());
     }
 
-    /* ==================== 3. View Token by ID ==================== */
-
-    @Override
-    public TokenResponse getTokenById(Long tokenId, User currentUser) {
-        Token token = tokenRepository.findById(tokenId)
-                .orElseThrow(() -> new ResourceNotFoundException("Token not found with ID: " + tokenId));
-
-        // Only the owner or an ADMIN can view the token
-        if (!token.getOwner().getId().equals(currentUser.getId())
-                && !"ADMIN".equals(currentUser.getRole().name())) {
-            throw new IllegalStateException("You do not have permission to view this token.");
-        }
-
-        return mapToTokenResponse(token);
-    }
-
-    /* ==================== 4. Generate QR Code ==================== */
+    /* ==================== 3. Generate QR Code ==================== */
 
     @Override
     @Transactional
@@ -245,52 +228,6 @@ public class TokenServiceImpl implements TokenService {
         token.setStatus(TokenStatus.USED);
         token.setUsedAt(LocalDateTime.now());
         token = tokenRepository.save(token);
-
-        return mapToTokenResponse(token);
-    }
-
-    /* ==================== 7. Transfer Token ==================== */
-
-    @Override
-    @Transactional
-    public TokenResponse transferToken(TransferTokenRequest request) {
-        Token token = tokenRepository.findById(request.getTokenId())
-                .orElseThrow(() -> new ResourceNotFoundException("Token not found with ID: " + request.getTokenId()));
-
-        User sender = token.getOwner();
-
-        // Token must be AVAILABLE
-        if (token.getStatus() != TokenStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE tokens can be transferred. Current status: " + token.getStatus());
-        }
-
-        // Find the receiver
-        User receiver = userRepository.findByEmail(request.getReceiverEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("Receiver not found with email: " + request.getReceiverEmail()));
-
-        // Cannot transfer to yourself
-        if (sender.getId().equals(receiver.getId())) {
-            throw new IllegalStateException("Cannot transfer a token to yourself.");
-        }
-
-        // Prevent duplicate: receiver should not already have a token for this meal
-        if (tokenRepository.existsByOwnerAndMeal(receiver, token.getMeal())) {
-            throw new IllegalStateException("Receiver already has a token for this meal.");
-        }
-
-        // Transfer ownership
-        token.setOwner(receiver);
-
-        // Regenerate QR code for the new owner
-        token.setQrCode("TOKEN:" + token.getId() + ":" + UUID.randomUUID());
-        token = tokenRepository.save(token);
-
-        // Record the transfer transaction
-        TokenTransaction transaction = new TokenTransaction();
-        transaction.setSender(sender);
-        transaction.setReceiver(receiver);
-        transaction.setToken(token);
-        tokenTransactionRepository.save(transaction);
 
         return mapToTokenResponse(token);
     }

@@ -29,15 +29,4 @@ public interface MealRepository extends JpaRepository<Meal, Long> {
     List<Meal> findByHallIdAndMealDateBetweenOrderByMealDateDesc(
             Long hallId, LocalDate startDate, LocalDate endDate);
 
-    /** Find all closed meals for a hall that have NOT been refunded yet (pending) */
-    List<Meal> findByHallIdAndIsClosedTrueAndRefundedAtIsNull(Long hallId);
-
-    /** Find all closed meals for a hall that HAVE been refunded (completed) */
-    List<Meal> findByHallIdAndIsClosedTrueAndRefundedAtIsNotNullOrderByRefundedAtDesc(Long hallId);
-
-    /** Count closed meals with pending refunds for a hall */
-    long countByHallIdAndIsClosedTrueAndRefundedAtIsNull(Long hallId);
-
-    /** Count closed meals with completed refunds for a hall */
-    long countByHallIdAndIsClosedTrueAndRefundedAtIsNotNull(Long hallId);
 }

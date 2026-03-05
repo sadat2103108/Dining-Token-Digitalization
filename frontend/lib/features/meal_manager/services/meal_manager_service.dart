@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/services/service_locator.dart';
@@ -21,9 +22,10 @@ class MealManagerService {
 
   /// POST /wallet/topup
   /// Returns true on success. Backend returns ApiResponse<StudentBalanceResponse>.
+  /// Throws with the backend error message on failure.
   Future<bool> topUpWallet({
     required String studentId,
-    required double amount,
+    required int amount,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -35,26 +37,32 @@ class MealManagerService {
       );
       final body = response.data as Map<String, dynamic>;
       return body['success'] == true;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic> && data['message'] != null) {
+        throw Exception(data['message']);
+      }
+      throw Exception('Failed to top up wallet');
     } catch (e) {
       debugPrint('TopUpWallet error: $e');
-      return false;
+      rethrow;
     }
   }
 
   /// GET /wallet/student/{studentId}
   /// Returns the student's current wallet balance.
-  Future<double> getStudentBalance(String studentId) async {
+  Future<int> getStudentBalance(String studentId) async {
     try {
       final response = await _apiClient.get('/wallet/student/$studentId');
       final body = response.data as Map<String, dynamic>;
       if (body['success'] == true && body['data'] != null) {
         final data = body['data'] as Map<String, dynamic>;
-        return (data['balance'] as num).toDouble();
+        return (data['balance'] as num).toInt();
       }
-      return 0.0;
+      return 0;
     } catch (e) {
       debugPrint('GetStudentBalance error: $e');
-      return 0.0;
+      return 0;
     }
   }
 
@@ -153,22 +161,6 @@ class MealManagerService {
   }
 
   // ---------------------------------------------------------------------------
-  // Meal Cancellation
-  // ---------------------------------------------------------------------------
-
-  /// POST /meals/config/{id}/cancel — Cancel a meal and auto-refund token holders.
-  Future<bool> cancelMeal(int mealId) async {
-    try {
-      final response = await _apiClient.post('/meals/config/$mealId/cancel');
-      final body = response.data as Map<String, dynamic>;
-      return body['success'] == true;
-    } catch (e) {
-      debugPrint('CancelMeal error: $e');
-      return false;
-    }
-  }
-
-  // ---------------------------------------------------------------------------
   // Reports / Dashboard Stats
   // ---------------------------------------------------------------------------
 
@@ -206,41 +198,9 @@ class MealManagerService {
     }
   }
 
-  /// GET /reports/sales?date=YYYY-MM-DD
-  /// Extracts revenue per meal type from the SalesReportResponse.
-  Future<Map<String, double>> getRevenueReport(String date) async {
-    try {
-      final response = await _apiClient.get(
-        '/reports/sales',
-        queryParameters: {'date': date},
-      );
-      final body = response.data as Map<String, dynamic>;
-      if (body['success'] == true && body['data'] != null) {
-        final data = body['data'] as Map<String, dynamic>;
-        final meals = data['meals'] as List<dynamic>? ?? [];
-        double lunchRevenue = 0.0;
-        double dinnerRevenue = 0.0;
-        for (final meal in meals) {
-          final m = meal as Map<String, dynamic>;
-          final type = (m['mealType'] as String?)?.toUpperCase() ?? '';
-          final revenue = (m['revenue'] as num?)?.toDouble() ?? 0.0;
-          if (type == 'LUNCH') {
-            lunchRevenue = revenue;
-          } else if (type == 'DINNER') {
-            dinnerRevenue = revenue;
-          }
-        }
-        return {
-          'lunchRevenue': lunchRevenue,
-          'dinnerRevenue': dinnerRevenue,
-        };
-      }
-      return {'lunchRevenue': 0.0, 'dinnerRevenue': 0.0};
-    } catch (e) {
-      debugPrint('GetRevenueReport error: $e');
-      return {'lunchRevenue': 0.0, 'dinnerRevenue': 0.0};
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Dashboard
+  // ---------------------------------------------------------------------------
 
   /// GET /reports/wallet-topups?date=YYYY-MM-DD
   /// Backend returns WalletTopupReportResponse; we map topups to CreditTransaction.
@@ -260,7 +220,7 @@ class MealManagerService {
             id: (t['transactionId'] ?? '').toString(),
             studentId: (t['receiverId'] ?? '').toString(),
             studentName: t['receiverName'] as String? ?? '',
-            amount: (t['amount'] as num?)?.toDouble() ?? 0.0,
+            amount: (t['amount'] as num?)?.toInt() ?? 0,
             timestamp: t['createdAt'] != null
                 ? DateTime.parse(t['createdAt'] as String)
                 : DateTime.now(),
@@ -290,8 +250,6 @@ class MealManagerService {
       return const DashboardData(
         lunchCount: 0,
         dinnerCount: 0,
-        lunchRevenue: 0,
-        dinnerRevenue: 0,
         totalStudents: 0,
         todayTopUps: 0,
       );
@@ -300,8 +258,6 @@ class MealManagerService {
       return const DashboardData(
         lunchCount: 0,
         dinnerCount: 0,
-        lunchRevenue: 0,
-        dinnerRevenue: 0,
         totalStudents: 0,
         todayTopUps: 0,
       );
@@ -311,25 +267,6 @@ class MealManagerService {
   // ---------------------------------------------------------------------------
   // History
   // ---------------------------------------------------------------------------
-
-  /// GET /history/meals
-  Future<List<DailyMealHistory>> getMealHistory() async {
-    try {
-      final response = await _apiClient.get('/history/meals');
-      final body = response.data as Map<String, dynamic>;
-      if (body['success'] == true && body['data'] != null) {
-        final list = body['data'] as List<dynamic>;
-        return list
-            .map((e) =>
-                DailyMealHistory.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      debugPrint('GetMealHistory error: $e');
-      return [];
-    }
-  }
 
   /// GET /history/credits
   Future<List<DailyCreditHistory>> getCreditHistory() async {
@@ -369,8 +306,6 @@ class MealManagerService {
 class DashboardData {
   final int lunchCount;
   final int dinnerCount;
-  final double lunchRevenue;
-  final double dinnerRevenue;
   final int totalStudents;
   final int todayTopUps;
 
@@ -380,8 +315,6 @@ class DashboardData {
   const DashboardData({
     required this.lunchCount,
     required this.dinnerCount,
-    required this.lunchRevenue,
-    required this.dinnerRevenue,
     required this.totalStudents,
     required this.todayTopUps,
     this.isLunchAvailable = true,
@@ -389,14 +322,11 @@ class DashboardData {
   });
 
   int get totalMeals => lunchCount + dinnerCount;
-  double get totalRevenue => lunchRevenue + dinnerRevenue;
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
     return DashboardData(
       lunchCount: (json['lunchCount'] as num?)?.toInt() ?? 0,
       dinnerCount: (json['dinnerCount'] as num?)?.toInt() ?? 0,
-      lunchRevenue: (json['lunchRevenue'] as num?)?.toDouble() ?? 0.0,
-      dinnerRevenue: (json['dinnerRevenue'] as num?)?.toDouble() ?? 0.0,
       totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
       todayTopUps: (json['todayTopUps'] as num?)?.toInt() ?? 0,
       isLunchAvailable: json['lunchAvailable'] as bool? ?? true,

@@ -15,10 +15,11 @@ public class MealConfigResponse {
     private Long id;
     private String date;             // YYYY-MM-DD
     private String mealType;         // LUNCH or DINNER
-    private java.math.BigDecimal price;
+    private Long price;
     private String menu;
     private String purchaseDeadline; // HH:mm format for frontend display
     private String purchaseStartTime;
     private String purchaseEndTime;
     private boolean isClosed;
+    private int tokensSold;          // number of tokens purchased for this meal
 }

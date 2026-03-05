@@ -4,8 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
 /**
  * Response DTO for student wallet balance lookup.
  */
@@ -15,5 +13,5 @@ import java.math.BigDecimal;
 public class StudentBalanceResponse {
     private Long studentId;
     private String studentName;
-    private BigDecimal balance;
+    private Long balance;
 }

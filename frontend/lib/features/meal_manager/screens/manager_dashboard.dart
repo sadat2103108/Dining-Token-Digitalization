@@ -5,14 +5,12 @@ import '../widgets/meal_count_card.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/quick_action_tile.dart';
 import 'add_credit_page.dart';
-import 'set_price_page.dart';
-import 'set_menu_page.dart';
-import 'meal_cancellation_page.dart';
+import 'set_meal_page.dart';
 import 'history_page.dart';
 
 /// The main dashboard for the Meal Manager role.
 ///
-/// Shows today's meal stats, revenue, and quick actions
+/// Shows today's meal stats and quick actions
 /// to navigate to management tools.
 class ManagerDashboard extends StatefulWidget {
   const ManagerDashboard({super.key});
@@ -135,8 +133,8 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
 
           const SizedBox(height: 20),
 
-          // ── Section: Today's Meal Counts ──
-          _sectionHeader(theme, "Today's Meal Counts"),
+          // ── Section: Tomorrow's Token Count ──
+          _sectionHeader(theme, "Tomorrow's Token Count"),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -162,17 +160,8 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
 
           const SizedBox(height: 20),
 
-          // ── Section: Revenue Overview ──
-          _sectionHeader(theme, 'Revenue Overview'),
-          const SizedBox(height: 8),
-          StatCard(
-            title: 'Total Revenue',
-            value: '৳${data.totalRevenue.toStringAsFixed(0)}',
-            icon: Icons.account_balance_wallet,
-            color: Colors.green,
-            subtitle:
-                'Lunch ৳${data.lunchRevenue.toStringAsFixed(0)} · Dinner ৳${data.dinnerRevenue.toStringAsFixed(0)}',
-          ),
+          // ── Section: Overview ──
+          _sectionHeader(theme, 'Overview'),
           const SizedBox(height: 8),
           IntrinsicHeight(
             child: Row(
@@ -215,30 +204,13 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
           const SizedBox(height: 8),
 
           QuickActionTile(
-            label: 'Set Meal Prices',
-            description: 'Configure lunch & dinner prices',
-            icon: Icons.attach_money,
-            color: Colors.purple,
-            onTap: () => _goTo(const SetPricePage()),
-          ),
-          const SizedBox(height: 8),
-
-          QuickActionTile(
-            label: 'Set Menu',
-            description: "Tomorrow's lunch & dinner menu",
+            label: 'Set Meal',
+            description: "Set tomorrow's menu & prices",
             icon: Icons.restaurant_menu,
             color: Colors.orange,
-            onTap: () => _goTo(const SetMenuPage()),
+            onTap: () => _goTo(const SetMealPage()),
           ),
           const SizedBox(height: 8),
-
-          QuickActionTile(
-            label: 'Cancel Meal',
-            description: 'Cancel a meal & auto-refund students',
-            icon: Icons.cancel_outlined,
-            color: Colors.red,
-            onTap: () => _goTo(const MealCancellationPage()),
-          ),
 
           const SizedBox(height: 24),
         ],

@@ -22,10 +22,10 @@ class LoginResponse {
 
 // --- Wallet ---
 class WalletResponse {
-  final double balance;
+  final int balance;
   WalletResponse({required this.balance});
   factory WalletResponse.fromJson(Map<String, dynamic> json) => WalletResponse(
-    balance: (json['balance'] as num).toDouble(),
+    balance: (json['balance'] as num).toInt(),
   );
 }
 

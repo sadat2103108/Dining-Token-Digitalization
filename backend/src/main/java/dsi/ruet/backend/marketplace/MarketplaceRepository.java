@@ -63,4 +63,7 @@ public interface MarketplaceRepository extends JpaRepository<MarketplacePost, Lo
     /** Get the active post for a specific token. */
     Optional<MarketplacePost> findFirstByTokenIdAndStatusIn(
             Long tokenId, List<MarketplacePostStatus> statuses);
+
+    /** Get ALL marketplace posts for a token (any status). */
+    List<MarketplacePost> findByTokenId(Long tokenId);
 }

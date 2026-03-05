@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -15,7 +14,7 @@ public class WalletTopupReportResponse {
     private String date;
     private Long hallId;
     private int totalTopups;
-    private BigDecimal totalAmount;
+    private Long totalAmount;
     private List<TopupDetail> topups;
 
     @Data
@@ -27,7 +26,7 @@ public class WalletTopupReportResponse {
         private Long receiverId;     // Student who received
         private String receiverName;
         private String receiverEmail;
-        private BigDecimal amount;
+        private Long amount;
         private LocalDateTime createdAt;
     }
 }

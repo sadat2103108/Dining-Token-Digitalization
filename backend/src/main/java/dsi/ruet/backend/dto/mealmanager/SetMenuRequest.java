@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class SetMenuRequest {
     private String mealType;              // LUNCH or DINNER
     private String menu;                  // menu text
-    private java.math.BigDecimal price;   // meal price
+    private Long price;            // meal price
     private LocalDateTime purchaseStartTime;
     private LocalDateTime purchaseEndTime;
 }

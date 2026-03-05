@@ -11,7 +11,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,6 +46,9 @@ public class StudentController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private TokenTransactionRepository tokenTransactionRepository;
+
     // ==================== WALLET ====================
 
     /**
@@ -60,7 +62,7 @@ public class StudentController {
         Wallet wallet = walletRepository.findByUserId(currentUser.getId())
                 .orElse(null);
 
-        BigDecimal balance = wallet != null ? wallet.getBalance() : BigDecimal.ZERO;
+        Long balance = wallet != null ? wallet.getBalance() : 0L;
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("balance", balance);
@@ -119,8 +121,11 @@ public class StudentController {
 
         List<Map<String, Object>> data = allMeals.stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getIsClosed()))
+                // Hide meals with no menu or zero/null price
+                .filter(m -> m.getMenu() != null && !m.getMenu().trim().isEmpty())
+                .filter(m -> m.getPrice() != null && m.getPrice() > 0)
                 .filter(m -> {
-                    // Use purchaseEndTime as deadline; if null, meal is always available
+                    // Use purchaseEndTime as deadline
                     if (m.getPurchaseEndTime() != null) {
                         return now.isBefore(m.getPurchaseEndTime());
                     }
@@ -128,7 +133,15 @@ public class StudentController {
                     if (m.getPurchaseDeadline() != null) {
                         return now.isBefore(m.getPurchaseDeadline());
                     }
-                    return true; // no deadline set = available by default
+                    // Default window: 8 PM to 11:59 PM on the day before the meal
+                    LocalDate mealDate = m.getMealDate();
+                    if (mealDate != null) {
+                        LocalDate dayBefore = mealDate.minusDays(1);
+                        LocalDateTime windowStart = dayBefore.atTime(20, 0);   // 8:00 PM
+                        LocalDateTime windowEnd   = dayBefore.atTime(23, 59);  // 11:59 PM
+                        return !now.isBefore(windowStart) && now.isBefore(windowEnd);
+                    }
+                    return false;
                 })
                 .map(this::mealToMap)
                 .collect(Collectors.toList());
@@ -140,7 +153,12 @@ public class StudentController {
 
     /**
      * GET /students/transactions
-     * Returns the student's transaction history combining token purchases and wallet top-ups.
+     * Returns the student's full transaction history:
+     *   - Token purchases
+     *   - Wallet top-ups
+     *   - Marketplace buy/sell (credit transfers)
+     *   - Token transfers (marketplace token movements)
+     *   - Any other coin transactions involving this student
      */
     @GetMapping("/students/transactions")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyTransactions(
@@ -153,7 +171,7 @@ public class StudentController {
 
         List<Map<String, Object>> transactions = new ArrayList<>();
 
-        // --- Token-based transactions (purchases / sales) ---
+        // --- Token-based transactions (purchases) ---
         List<Token> tokens = tokenRepository.findByOwnerOrderByCreatedAtDesc(currentUser);
         for (Token token : tokens) {
             Meal meal = token.getMeal();
@@ -173,12 +191,14 @@ public class StudentController {
             transactions.add(tx);
         }
 
-        // --- Wallet top-ups (received) ---
-        List<CoinTransaction> topUps = coinTransactionRepository
+        // --- All coin transactions involving this student ---
+        List<CoinTransaction> coinTxs = coinTransactionRepository
                 .findBySenderIdOrReceiverId(userId, userId);
-        for (CoinTransaction ct : topUps) {
-            if (ct.getType() == TransactionType.TOPUP && ct.getReceiver() != null
-                    && ct.getReceiver().getId().equals(userId)) {
+        for (CoinTransaction ct : coinTxs) {
+            boolean isSender = ct.getSender() != null && ct.getSender().getId().equals(userId);
+            boolean isReceiver = ct.getReceiver() != null && ct.getReceiver().getId().equals(userId);
+
+            if (ct.getType() == TransactionType.TOPUP && isReceiver) {
                 Map<String, Object> tx = new LinkedHashMap<>();
                 tx.put("status", "Top Up");
                 tx.put("tokenType", "Wallet Top Up");
@@ -188,6 +208,77 @@ public class StudentController {
                 tx.put("amount", ct.getAmount().intValue());
                 tx.put("tag", "Top Up");
                 tx.put("paymentMethod", "cash");
+                transactions.add(tx);
+            } else if (ct.getType() == TransactionType.TRANSACTION) {
+                if (isSender) {
+                    Map<String, Object> tx = new LinkedHashMap<>();
+                    tx.put("status", "Marketplace Buy");
+                    tx.put("tokenType", "Token Purchase (Marketplace)");
+                    tx.put("date", ct.getCreatedAt().toLocalDate().toString());
+                    tx.put("hall", hallName);
+                    tx.put("time", ct.getCreatedAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
+                    tx.put("amount", -ct.getAmount().intValue());
+                    tx.put("tag", "Marketplace");
+                    tx.put("paymentMethod", "credit");
+                    transactions.add(tx);
+                } else if (isReceiver) {
+                    Map<String, Object> tx = new LinkedHashMap<>();
+                    tx.put("status", "Marketplace Sale");
+                    tx.put("tokenType", "Token Sale (Marketplace)");
+                    tx.put("date", ct.getCreatedAt().toLocalDate().toString());
+                    tx.put("hall", hallName);
+                    tx.put("time", ct.getCreatedAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
+                    tx.put("amount", ct.getAmount().intValue());
+                    tx.put("tag", "Marketplace");
+                    tx.put("paymentMethod", "credit");
+                    transactions.add(tx);
+                }
+            } else if (ct.getType() == TransactionType.REFUND && isReceiver) {
+                Map<String, Object> tx = new LinkedHashMap<>();
+                tx.put("status", "Refund");
+                tx.put("tokenType", "Refund");
+                tx.put("date", ct.getCreatedAt().toLocalDate().toString());
+                tx.put("hall", hallName);
+                tx.put("time", ct.getCreatedAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
+                tx.put("amount", ct.getAmount().intValue());
+                tx.put("tag", "Refund");
+                tx.put("paymentMethod", "credit");
+                transactions.add(tx);
+            }
+        }
+
+        // --- Token transfer transactions (marketplace token movements) ---
+        List<TokenTransaction> tokenTxs = tokenTransactionRepository
+                .findBySenderIdOrReceiverId(userId, userId);
+        for (TokenTransaction tt : tokenTxs) {
+            boolean isSender = tt.getSender() != null && tt.getSender().getId().equals(userId);
+            boolean isReceiver = tt.getReceiver() != null && tt.getReceiver().getId().equals(userId);
+            Token token = tt.getToken();
+            Meal meal = token != null ? token.getMeal() : null;
+            String mealType = (meal != null && meal.getMealType() != null) ? meal.getMealType().name() : "UNKNOWN";
+
+            if (isSender) {
+                Map<String, Object> tx = new LinkedHashMap<>();
+                tx.put("status", "Token Sent");
+                tx.put("tokenType", capitalize(mealType) + " Token Transfer");
+                tx.put("date", tt.getCreatedAt().toLocalDate().toString());
+                tx.put("hall", hallName);
+                tx.put("time", tt.getCreatedAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
+                tx.put("amount", 0);
+                tx.put("tag", "Transfer");
+                tx.put("paymentMethod", "token");
+                transactions.add(tx);
+            }
+            if (isReceiver) {
+                Map<String, Object> tx = new LinkedHashMap<>();
+                tx.put("status", "Token Received");
+                tx.put("tokenType", capitalize(mealType) + " Token Transfer");
+                tx.put("date", tt.getCreatedAt().toLocalDate().toString());
+                tx.put("hall", hallName);
+                tx.put("time", tt.getCreatedAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
+                tx.put("amount", 0);
+                tx.put("tag", "Transfer");
+                tx.put("paymentMethod", "token");
                 transactions.add(tx);
             }
         }

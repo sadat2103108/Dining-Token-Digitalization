@@ -1,6 +1,6 @@
 /// Represents the student's wallet balance and details.
 class WalletModel {
-  final double balance;
+  final int balance;
   final String? currency;
 
   const WalletModel({
@@ -9,7 +9,7 @@ class WalletModel {
   });
 
   factory WalletModel.fromJson(Map<String, dynamic> json) => WalletModel(
-        balance: (json['balance'] as num).toDouble(),
+        balance: (json['balance'] as num).toInt(),
         currency: json['currency'] as String? ?? '৳',
       );
 
@@ -19,9 +19,9 @@ class WalletModel {
       };
 
   /// Formatted balance string (e.g., "৳250").
-  String get formattedBalance => '$currency${balance.toStringAsFixed(balance.truncateToDouble() == balance ? 0 : 2)}';
+  String get formattedBalance => '$currency$balance';
 
-  WalletModel copyWith({double? balance, String? currency}) => WalletModel(
+  WalletModel copyWith({int? balance, String? currency}) => WalletModel(
         balance: balance ?? this.balance,
         currency: currency ?? this.currency,
       );
@@ -42,7 +42,7 @@ class WalletModel {
 
 /// Represents a wallet top-up request.
 class WalletTopUpRequest {
-  final double amount;
+  final int amount;
   final String? paymentMethod;
 
   const WalletTopUpRequest({
@@ -62,11 +62,11 @@ class WalletTopUpRequest {
 /// Represents a wallet transaction entry.
 class WalletTransaction {
   final String id;
-  final double amount;
+  final int amount;
   final String type; // 'CREDIT' | 'DEBIT' | 'TOPUP' | 'REFUND'
   final String description;
   final String date;
-  final double balanceAfter;
+  final int balanceAfter;
 
   const WalletTransaction({
     required this.id,
@@ -80,11 +80,11 @@ class WalletTransaction {
   factory WalletTransaction.fromJson(Map<String, dynamic> json) =>
       WalletTransaction(
         id: json['id'] as String,
-        amount: (json['amount'] as num).toDouble(),
+        amount: (json['amount'] as num).toInt(),
         type: json['type'] as String,
         description: json['description'] as String,
         date: json['date'] as String,
-        balanceAfter: (json['balanceAfter'] as num).toDouble(),
+        balanceAfter: (json['balanceAfter'] as num).toInt(),
       );
 
   Map<String, dynamic> toJson() => {

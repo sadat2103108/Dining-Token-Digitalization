@@ -132,23 +132,6 @@ public class MealManagerController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== MEAL CANCELLATION ====================
-
-    /**
-     * POST /api/v1/meals/config/{id}/cancel
-     * Cancel a meal and auto-refund all students who purchased tokens.
-     * Sets isClosed = true, refunds wallets, deletes tokens.
-     */
-    @PostMapping("/meals/config/{id}/cancel")
-    public ResponseEntity<ApiResponse<Void>> cancelMeal(
-            @PathVariable Long id,
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<Void> response = mealManagerService.cancelMeal(id, managerId);
-        return ResponseEntity.ok(response);
-    }
-
     // ==================== DASHBOARD ====================
 
     /**
@@ -165,19 +148,6 @@ public class MealManagerController {
     }
 
     // ==================== HISTORY ====================
-
-    /**
-     * GET /api/v1/history/meals
-     * Get daily meal history (last 30 days).
-     */
-    @GetMapping("/history/meals")
-    public ResponseEntity<ApiResponse<List<DailyMealHistoryResponse>>> getMealHistory(
-            Authentication authentication) {
-
-        Long managerId = getAuthenticatedUserId(authentication);
-        ApiResponse<List<DailyMealHistoryResponse>> response = mealManagerService.getMealHistory(managerId);
-        return ResponseEntity.ok(response);
-    }
 
     /**
      * GET /api/v1/history/credits

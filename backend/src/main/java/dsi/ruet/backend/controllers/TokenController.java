@@ -72,27 +72,7 @@ public class TokenController {
         return ResponseEntity.ok(new ApiResponse<>("Tokens retrieved successfully.", tokens));
     }
 
-    /* ==================== 3. View Token by ID ==================== */
-
-    /**
-     * Retrieves a single token by its ID.
-     * The requesting user must be the token owner or have ADMIN role.
-     *
-     * @param id          the token's unique ID
-     * @param currentUser the authenticated user (injected from JWT)
-     * @return the matching TokenResponse (HTTP 200 OK)
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'ADMIN')")
-    public ResponseEntity<ApiResponse<TokenResponse>> getTokenById(
-            @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
-
-        TokenResponse token = tokenService.getTokenById(id, currentUser);
-        return ResponseEntity.ok(new ApiResponse<>("Token retrieved successfully.", token));
-    }
-
-    /* ==================== 4. Generate QR Code ==================== */
+    /* ==================== 3. Generate QR Code ==================== */
 
     /**
      * Generates a Base64-encoded QR code image for a specific token.
@@ -149,22 +129,4 @@ public class TokenController {
         return ResponseEntity.ok(new ApiResponse<>("Token marked as used.", token));
     }
 
-    /* ==================== 7. Transfer Token ==================== */
-
-    /**
-     * Transfers a token from one user to another.
-     * Used for direct transfers or marketplace purchases.
-     * Restricted to STUDENT and ADMIN roles.
-     *
-     * @param request the transfer request containing token ID and receiver email
-     * @return the updated TokenResponse reflecting the new owner (HTTP 200 OK)
-     */
-    @PostMapping("/transfer")
-    @PreAuthorize("hasAnyRole('STUDENT', 'ADMIN')")
-    public ResponseEntity<ApiResponse<TokenResponse>> transferToken(
-            @Valid @RequestBody TransferTokenRequest request) {
-
-        TokenResponse token = tokenService.transferToken(request);
-        return ResponseEntity.ok(new ApiResponse<>("Token transferred successfully.", token));
-    }
 }

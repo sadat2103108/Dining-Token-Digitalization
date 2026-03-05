@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -15,7 +14,7 @@ public class SalesReportResponse {
     private Long hallId;
     private List<MealSalesDetail> meals;
     private long totalTokensSold;
-    private BigDecimal totalRevenue;
+    private Long totalRevenue;
 
     @Data
     @NoArgsConstructor
@@ -24,10 +23,10 @@ public class SalesReportResponse {
         private Long mealId;
         private String mealType;
         private String menu;
-        private BigDecimal price;
+        private Long price;
         private long tokensSold;
         private long tokensUsed;
         private long tokensActive;
-        private BigDecimal revenue;
+        private Long revenue;
     }
 }

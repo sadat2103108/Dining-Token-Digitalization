@@ -104,7 +104,7 @@ class _CreditHistoryCardState extends State<CreditHistoryCard>
                     ),
                   ),
                   Text(
-                    '৳${history.totalAmount.toStringAsFixed(0)}',
+                    '৳${history.totalAmount}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: Colors.green.shade700,
@@ -225,7 +225,7 @@ class _TransactionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '+৳${transaction.amount.toStringAsFixed(0)}',
+                '+৳${transaction.amount}',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: Colors.green.shade600,

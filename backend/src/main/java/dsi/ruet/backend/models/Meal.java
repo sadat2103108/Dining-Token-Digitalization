@@ -4,7 +4,6 @@ import dsi.ruet.backend.models.enums.MealType;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -48,13 +47,9 @@ public class Meal {
     @Column(name = "purchase_deadline")
     private LocalDateTime purchaseDeadline;
 
-    @Column(name = "price", nullable = false, precision = 8, scale = 2)
-    private BigDecimal price;
+    @Column(name = "price", nullable = false)
+    private Long price;
 
     @Column(name = "is_closed", nullable = false)
-    private Boolean isClosed = false;
-
-    // Timestamp when refunds were processed for this meal (null = not yet refunded)
-    @Column(name = "refunded_at")
-    private LocalDateTime refundedAt;
+    private Boolean isClosed = true;
 }

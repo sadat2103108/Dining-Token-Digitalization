@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -34,7 +33,7 @@ public class TokenResponse {
     private LocalDate mealDate;
 
     /** Price of the meal in the system's currency */
-    private BigDecimal price;
+    private Long price;
 
     /** Description of the meal's menu items */
     private String menu;

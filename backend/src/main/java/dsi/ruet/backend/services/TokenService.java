@@ -22,11 +22,6 @@ public interface TokenService {
     List<TokenResponse> getMyTokens(User currentUser);
 
     /**
-     * Get a single token by ID (owner or admin only).
-     */
-    TokenResponse getTokenById(Long tokenId, User currentUser);
-
-    /**
      * Generate a QR code for a token owned by the authenticated student.
      */
     QrResponse generateQr(Long tokenId, User currentUser);
@@ -40,9 +35,4 @@ public interface TokenService {
      * Mark a token as used after serving the meal.
      */
     TokenResponse markTokenUsed(Long tokenId);
-
-    /**
-     * Transfer a token from the current owner to another user.
-     */
-    TokenResponse transferToken(TransferTokenRequest request);
 }

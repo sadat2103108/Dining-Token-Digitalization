@@ -3,11 +3,12 @@ class MealConfig {
   final int? id;
   final String date; // YYYY-MM-DD
   final MealType mealType;
-  final double price;
+  final int price;
   final String menu;
   final String? purchaseDeadline; // HH:mm format
   final DateTime? createdAt;
   final bool isClosed;
+  final int tokensSold;
 
   const MealConfig({
     this.id,
@@ -18,6 +19,7 @@ class MealConfig {
     this.purchaseDeadline,
     this.createdAt,
     this.isClosed = false,
+    this.tokensSold = 0,
   });
 
   factory MealConfig.fromJson(Map<String, dynamic> json) {
@@ -25,13 +27,14 @@ class MealConfig {
       id: json['id'] as int?,
       date: json['date'] as String,
       mealType: MealType.fromString(json['mealType'] as String),
-      price: (json['price'] as num).toDouble(),
+      price: (json['price'] as num).toInt(),
       menu: json['menu'] as String,
       purchaseDeadline: json['purchaseDeadline'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
       isClosed: json['isClosed'] as bool? ?? json['closed'] as bool? ?? false,
+      tokensSold: (json['tokensSold'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -50,10 +53,11 @@ class MealConfig {
     int? id,
     String? date,
     MealType? mealType,
-    double? price,
+    int? price,
     String? menu,
     String? purchaseDeadline,
     bool? isClosed,
+    int? tokensSold,
   }) {
     return MealConfig(
       id: id ?? this.id,
@@ -64,6 +68,7 @@ class MealConfig {
       purchaseDeadline: purchaseDeadline ?? this.purchaseDeadline,
       createdAt: createdAt,
       isClosed: isClosed ?? this.isClosed,
+      tokensSold: tokensSold ?? this.tokensSold,
     );
   }
 }

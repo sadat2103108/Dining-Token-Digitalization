@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import '../models/meal_config.dart';
 import '../services/meal_manager_service.dart';
 
-/// Page for the Meal Manager to set tomorrow's lunch & dinner menu.
+/// Combined page for Meal Manager to set menu items AND price
+/// for tomorrow's lunch & dinner.
 ///
 /// API: POST /meals/config  |  PUT /meals/config/{id}
-class SetMenuPage extends StatefulWidget {
-  const SetMenuPage({super.key});
+class SetMealPage extends StatefulWidget {
+  const SetMealPage({super.key});
 
   @override
-  State<SetMenuPage> createState() => _SetMenuPageState();
+  State<SetMealPage> createState() => _SetMealPageState();
 }
 
-class _SetMenuPageState extends State<SetMenuPage>
+class _SetMealPageState extends State<SetMealPage>
     with SingleTickerProviderStateMixin {
   final _service = MealManagerService();
   late TabController _tabController;
@@ -20,13 +21,15 @@ class _SetMenuPageState extends State<SetMenuPage>
   bool _loading = true;
   bool _saving = false;
 
-  // Lunch menu items
+  // Lunch
   final List<String> _lunchItems = [];
   final _lunchItemController = TextEditingController();
+  final _lunchPriceController = TextEditingController();
 
-  // Dinner menu items
+  // Dinner
   final List<String> _dinnerItems = [];
   final _dinnerItemController = TextEditingController();
+  final _dinnerPriceController = TextEditingController();
 
   List<MealConfig> _configs = [];
 
@@ -34,18 +37,20 @@ class _SetMenuPageState extends State<SetMenuPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadMenu();
+    _loadConfig();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _lunchItemController.dispose();
+    _lunchPriceController.dispose();
     _dinnerItemController.dispose();
+    _dinnerPriceController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMenu() async {
+  Future<void> _loadConfig() async {
     setState(() => _loading = true);
     try {
       final configs = await _service.getTomorrowConfig();
@@ -57,14 +62,17 @@ class _SetMenuPageState extends State<SetMenuPage>
             .map((s) => s.trim())
             .where((s) => s.isNotEmpty)
             .toList();
+
         if (c.mealType == MealType.lunch) {
           _lunchItems
             ..clear()
             ..addAll(items);
+          if (c.price > 0) _lunchPriceController.text = c.price.toString();
         } else {
           _dinnerItems
             ..clear()
             ..addAll(items);
+          if (c.price > 0) _dinnerPriceController.text = c.price.toString();
         }
       }
     } catch (_) {}
@@ -85,33 +93,34 @@ class _SetMenuPageState extends State<SetMenuPage>
   }
 
   Future<void> _save() async {
+    final lunchPrice = int.tryParse(_lunchPriceController.text.trim());
+    final dinnerPrice = int.tryParse(_dinnerPriceController.text.trim());
+
+    if (lunchPrice == null && _lunchItems.isNotEmpty) {
+      _showSnackBar('Please enter a price for Lunch');
+      return;
+    }
+    if (dinnerPrice == null && _dinnerItems.isNotEmpty) {
+      _showSnackBar('Please enter a price for Dinner');
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final dateStr =
           '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
 
+      // Lunch
       final lunchConfig = _configs.firstWhere(
         (c) => c.mealType == MealType.lunch,
         orElse: () => MealConfig(
-            date: dateStr,
-            mealType: MealType.lunch,
-            price: 55.0,
-            menu: ''),
+            date: dateStr, mealType: MealType.lunch, price: 0, menu: ''),
       );
-      final dinnerConfig = _configs.firstWhere(
-        (c) => c.mealType == MealType.dinner,
-        orElse: () => MealConfig(
-            date: dateStr,
-            mealType: MealType.dinner,
-            price: 65.0,
-            menu: ''),
+      final updatedLunch = lunchConfig.copyWith(
+        menu: _lunchItems.join(', '),
+        price: lunchPrice ?? 0,
       );
-
-      final updatedLunch =
-          lunchConfig.copyWith(menu: _lunchItems.join(', '));
-      final updatedDinner =
-          dinnerConfig.copyWith(menu: _dinnerItems.join(', '));
 
       if (lunchConfig.id != null) {
         await _service.updateMealConfig(lunchConfig.id!, updatedLunch);
@@ -119,13 +128,26 @@ class _SetMenuPageState extends State<SetMenuPage>
         await _service.createMealConfig(updatedLunch);
       }
 
+      // Dinner
+      final dinnerConfig = _configs.firstWhere(
+        (c) => c.mealType == MealType.dinner,
+        orElse: () => MealConfig(
+            date: dateStr, mealType: MealType.dinner, price: 0, menu: ''),
+      );
+      final updatedDinner = dinnerConfig.copyWith(
+        menu: _dinnerItems.join(', '),
+        price: dinnerPrice ?? 0,
+      );
+
       if (dinnerConfig.id != null) {
         await _service.updateMealConfig(dinnerConfig.id!, updatedDinner);
       } else {
         await _service.createMealConfig(updatedDinner);
       }
 
-      if (mounted) _showSnackBar('Menu saved successfully!', isSuccess: true);
+      if (mounted) {
+        _showSnackBar('Meal config saved successfully!', isSuccess: true);
+      }
     } catch (e) {
       if (mounted) _showSnackBar('Error: $e');
     } finally {
@@ -160,20 +182,12 @@ class _SetMenuPageState extends State<SetMenuPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Set Menu'),
+        title: const Text('Set Meal'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.wb_sunny_outlined),
-              text: 'Lunch',
-              iconMargin: const EdgeInsets.only(bottom: 4),
-            ),
-            Tab(
-              icon: const Icon(Icons.nightlight_outlined),
-              text: 'Dinner',
-              iconMargin: const EdgeInsets.only(bottom: 4),
-            ),
+          tabs: const [
+            Tab(icon: Icon(Icons.wb_sunny_outlined), text: 'Lunch'),
+            Tab(icon: Icon(Icons.nightlight_outlined), text: 'Dinner'),
           ],
         ),
       ),
@@ -185,32 +199,35 @@ class _SetMenuPageState extends State<SetMenuPage>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildMenuTab(
+                      _buildMealTab(
                         theme: theme,
                         items: _lunchItems,
-                        controller: _lunchItemController,
+                        itemController: _lunchItemController,
+                        priceController: _lunchPriceController,
                         color: Colors.blue,
-                        emptyMessage: 'No lunch items yet. Add some below!',
+                        label: 'Lunch',
                       ),
-                      _buildMenuTab(
+                      _buildMealTab(
                         theme: theme,
                         items: _dinnerItems,
-                        controller: _dinnerItemController,
+                        itemController: _dinnerItemController,
+                        priceController: _dinnerPriceController,
                         color: Colors.orange,
-                        emptyMessage: 'No dinner items yet. Add some below!',
+                        label: 'Dinner',
                       ),
                     ],
                   ),
                 ),
 
-                // ── Save button (always visible at bottom) ──
+                // ── Save button ──
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     border: Border(
                       top: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withAlpha(80)),
+                          color:
+                              theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
                     ),
                   ),
                   child: SafeArea(
@@ -227,8 +244,7 @@ class _SetMenuPageState extends State<SetMenuPage>
                                     strokeWidth: 2, color: Colors.white),
                               )
                             : const Icon(Icons.save),
-                        label:
-                            Text(_saving ? 'Saving...' : 'Save Menu'),
+                        label: Text(_saving ? 'Saving...' : 'Save'),
                       ),
                     ),
                   ),
@@ -238,36 +254,65 @@ class _SetMenuPageState extends State<SetMenuPage>
     );
   }
 
-  Widget _buildMenuTab({
+  Widget _buildMealTab({
     required ThemeData theme,
     required List<String> items,
-    required TextEditingController controller,
+    required TextEditingController itemController,
+    required TextEditingController priceController,
     required Color color,
-    required String emptyMessage,
+    required String label,
   }) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Price field ──
+          Text('$label Price (৳)',
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: priceController,
+            decoration: InputDecoration(
+              hintText: 'e.g. 55',
+              prefixIcon: const Icon(Icons.attach_money),
+              suffixText: '৳',
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── Menu items header ──
+          Text('Menu Items',
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+
           // ── Add item form ──
           Row(
             children: [
               Expanded(
                 child: TextField(
-                  controller: controller,
+                  controller: itemController,
                   decoration: InputDecoration(
                     hintText: 'Add menu item…',
                     prefixIcon: const Icon(Icons.restaurant_menu),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _addItem(items, controller),
+                  onSubmitted: (_) => _addItem(items, itemController),
                 ),
               ),
               const SizedBox(width: 10),
               FilledButton(
-                onPressed: () => _addItem(items, controller),
+                onPressed: () => _addItem(items, itemController),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.all(14),
                   minimumSize: const Size(52, 52),
@@ -288,11 +333,11 @@ class _SetMenuPageState extends State<SetMenuPage>
                       children: [
                         Icon(Icons.restaurant_menu,
                             size: 48,
-                            color:
-                                theme.colorScheme.onSurfaceVariant.withAlpha(80)),
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.3)),
                         const SizedBox(height: 12),
                         Text(
-                          emptyMessage,
+                          'No $label items yet. Add some above!',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -315,15 +360,15 @@ class _SetMenuPageState extends State<SetMenuPage>
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: color.withAlpha(50)),
+                          side: BorderSide(color: color.withValues(alpha: 0.2)),
                         ),
-                        color: color.withAlpha(12),
+                        color: color.withValues(alpha: 0.05),
                         child: ListTile(
                           leading: Container(
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: color.withAlpha(30),
+                              color: color.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             alignment: Alignment.center,

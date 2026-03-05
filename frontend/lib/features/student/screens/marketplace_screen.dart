@@ -185,7 +185,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    sendBuyRequest(postId, paymentType: 'TRANSACTION');
+                    sendBuyRequest(postId, paymentType: 'TOPUP');
                   },
                 ),
                 const SizedBox(height: 8),
@@ -210,7 +210,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    sendBuyRequest(postId, paymentType: 'TOPUP');
+                    sendBuyRequest(postId, paymentType: 'TRANSACTION');
                   },
                 ),
                 const SizedBox(height: 8),
@@ -431,6 +431,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget _buildBrowseTab(ThemeData theme) {
     // Derive unique meal types from posts for the filter dropdown
     final mealTypes = openPosts.map((p) => p.mealType).toSet().toList()..sort();
+    // Reset filter if the selected meal type no longer exists in the list
+    if (_selectedMealType != null && !mealTypes.contains(_selectedMealType)) {
+      _selectedMealType = null;
+    }
     final filtered = _filteredPosts;
 
     return RefreshIndicator(

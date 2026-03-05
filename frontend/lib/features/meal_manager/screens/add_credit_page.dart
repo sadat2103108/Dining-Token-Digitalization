@@ -18,7 +18,7 @@ class _AddCreditPageState extends State<AddCreditPage> {
   final _service = MealManagerService();
 
   bool _submitting = false;
-  double? _currentBalance;
+  int? _currentBalance;
   bool _loadingBalance = false;
 
   @override
@@ -52,7 +52,7 @@ class _AddCreditPageState extends State<AddCreditPage> {
     try {
       final success = await _service.topUpWallet(
         studentId: _studentIdController.text.trim(),
-        amount: double.parse(_amountController.text.trim()),
+        amount: int.parse(_amountController.text.trim()),
       );
 
       if (!mounted) return;
@@ -66,7 +66,8 @@ class _AddCreditPageState extends State<AddCreditPage> {
         _showSnackBar('Failed to add credit. Try again.');
       }
     } catch (e) {
-      _showSnackBar('Error: $e');
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      _showSnackBar(msg);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -206,7 +207,7 @@ class _AddCreditPageState extends State<AddCreditPage> {
                           size: 18, color: theme.colorScheme.primary),
                       const SizedBox(width: 8),
                       Text(
-                        'Current Balance: ৳${_currentBalance!.toStringAsFixed(2)}',
+                        'Current Balance: ৳$_currentBalance',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.primary,

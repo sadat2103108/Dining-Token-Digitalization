@@ -38,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final tokens = await widget.apiService.getMyTokens();
 
       // Load wallet (non-critical, use fallback if fails)
-      WalletModel wallet = WalletModel(balance: 0.0);
+      WalletModel wallet = WalletModel(balance: 0);
       try {
         wallet = await widget.apiService.getWalletBalance();
       } catch (e) {

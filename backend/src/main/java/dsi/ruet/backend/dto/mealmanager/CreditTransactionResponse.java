@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -18,6 +17,6 @@ public class CreditTransactionResponse {
     private String id;
     private String studentId;    // roll number
     private String studentName;
-    private BigDecimal amount;
+    private Long amount;
     private LocalDateTime timestamp;
 }

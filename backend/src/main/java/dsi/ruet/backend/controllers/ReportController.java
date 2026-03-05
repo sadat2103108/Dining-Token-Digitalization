@@ -2,7 +2,6 @@ package dsi.ruet.backend.controllers;
 
 import dsi.ruet.backend.dto.ApiResponse;
 import dsi.ruet.backend.dto.manager.SalesReportResponse;
-import dsi.ruet.backend.dto.manager.SalesSummaryResponse;
 import dsi.ruet.backend.dto.manager.WalletTopupReportResponse;
 import dsi.ruet.backend.services.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,18 +48,4 @@ public class ReportController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * GET /reports/sales-summary — Get sales summary (today + tomorrow)
-     * Returns token sales counts and revenue for today and tomorrow,
-     * plus meal configuration details for tomorrow.
-     * Scoped to the authenticated meal manager's hall.
-     */
-    @GetMapping("/sales-summary")
-    @PreAuthorize("hasRole('MEAL_MANAGER')")
-    public ResponseEntity<ApiResponse<SalesSummaryResponse>> getSalesSummary(
-            Authentication authentication) {
-        String email = authentication.getName();
-        ApiResponse<SalesSummaryResponse> response = reportService.getSalesSummary(email);
-        return ResponseEntity.ok(response);
-    }
 }
