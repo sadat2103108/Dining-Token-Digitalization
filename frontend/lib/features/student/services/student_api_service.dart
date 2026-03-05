@@ -4,8 +4,8 @@ import 'package:frontend/core/constants/api_constants.dart';
 import '../models/models.dart';
 
 class StudentApiService {
-  // Use ApiConstants base URL instead of hardcoded emulator URL
-  static const String _baseUrl = ApiConstants.baseUrl;
+  // Use ApiConstants base URL dynamically (can be changed at runtime)
+  static String get _baseUrl => ApiConstants.baseUrl;
   final String _token;
   final int? _userId;
 

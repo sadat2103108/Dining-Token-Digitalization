@@ -11,6 +11,12 @@ class ApiClient {
     _initializeDio();
   }
 
+  /// Re-initialize Dio with a new base URL (for dev/testing)
+  void updateBaseUrl(String newBaseUrl) {
+    ApiConstants.baseUrl = newBaseUrl;
+    _initializeDio();
+  }
+
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(

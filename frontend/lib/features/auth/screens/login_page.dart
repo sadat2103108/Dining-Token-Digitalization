@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/constants/api_constants.dart';
+import 'package:frontend/core/services/service_locator.dart';
 import 'package:frontend/features/dining_manager/screens/scanner_page.dart';
 import 'package:frontend/features/meal_manager/screens/manager_dashboard.dart';
 import 'package:frontend/features/student/screens/student_home.dart';
@@ -20,10 +22,12 @@ class _LoginPageState extends State<LoginPage> {
   late final GlobalKey<FormState> _formKey;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
+  late final TextEditingController _baseUrlController;
 
   bool _isLoading = false;
   String? _emailError;
   String? _passwordError;
+  bool _showBaseUrlField = false;
 
   @override
   void initState() {
@@ -31,12 +35,14 @@ class _LoginPageState extends State<LoginPage> {
     _formKey = GlobalKey<FormState>();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    _baseUrlController = TextEditingController(text: ApiConstants.baseUrl);
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _baseUrlController.dispose();
     super.dispose();
   }
 
@@ -162,13 +168,36 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Welcome Back',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: scheme.onSurface,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Welcome Back',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: scheme.onSurface,
+                                  ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.settings,
+                                color: _showBaseUrlField
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant.withOpacity(0.4),
+                                size: 20,
                               ),
+                              tooltip: 'Set Base URL',
+                              onPressed: () {
+                                setState(
+                                  () =>
+                                      _showBaseUrlField = !_showBaseUrlField,
+                                );
+                              },
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -180,6 +209,93 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 32),
+
+                  // Base URL field (dev only)
+                  if (_showBaseUrlField)
+                    SizedBox(
+                      width: isWideScreen ? 500 : double.infinity,
+                      child: Card(
+                        elevation: 0,
+                        color: scheme.errorContainer.withOpacity(0.3),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 16,
+                                    color: scheme.error,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'DEV ONLY — Set Base URL',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _baseUrlController,
+                                style: const TextStyle(fontSize: 13),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  hintText: 'http://192.168.x.x:8080/api/v1',
+                                  hintStyle: TextStyle(
+                                    fontSize: 13,
+                                    color: scheme.onSurfaceVariant
+                                        .withOpacity(0.5),
+                                  ),
+                                  filled: true,
+                                  fillColor: scheme.surface,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: 32,
+                                child: FilledButton.tonal(
+                                  onPressed: () {
+                                    final url =
+                                        _baseUrlController.text.trim();
+                                    if (url.isNotEmpty) {
+                                      ServiceLocator.apiClient
+                                          .updateBaseUrl(url);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Base URL set to: $url',
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                    }
+                                  },
+                                  child: const Text(
+                                    'Apply',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // Login Card
                   SizedBox(
